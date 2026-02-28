@@ -45,13 +45,13 @@ public class DeviceBitmapService {
 	 * @param originDeviceName 原始设备名称（如 "A"）
 	 * @param personnelName    人员姓名（如 "孙浩翔"）
 	 */
-	public void processDevicePersonnelBitmap(String originDeviceName, String personnelName) {
+	public void processDevicePersonnelBitmap(String originDeviceName, String personnelName, int device_index) {
 		try {
 			logger.info("开始处理设备人员字模: originDeviceName={}, personnelName={}", originDeviceName,
 					personnelName);
 
 			// 1. 计算 INDEX
-			int index = calculatePersonnelIndex(originDeviceName, personnelName);
+			int index = calculatePersonnelIndex(originDeviceName, personnelName, device_index);
 			if (index == -1) {
 				logger.error("计算 INDEX 失败: originDeviceName={}, personnelName={}", originDeviceName,
 						personnelName);
@@ -87,7 +87,7 @@ public class DeviceBitmapService {
 	/**
 	 * 计算人员在设备中的 INDEX
 	 */
-	private int calculatePersonnelIndex(String originDeviceName, String personnelName) {
+	private int calculatePersonnelIndex(String originDeviceName, String personnelName, int device_index) {
 		try {
 			// 获取所有以该原始设备名称开头的设备
 			List<device> devices = deviceMapper.getDevicesByOriginName(originDeviceName);

@@ -84,7 +84,7 @@ public class deviceController {
 		for (String personnelName : personnels) {
 			if (personnelName != null && !personnelName.trim().isEmpty()) {
 				deviceBitmapService.processDevicePersonnelBitmap(originDeviceName,
-						personnelName.trim());
+						personnelName.trim(), deviceDTO.getDeviceIndex());
 			}
 		}
 		int result = deviceService.updateDevice(device);

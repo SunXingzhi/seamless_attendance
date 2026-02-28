@@ -53,7 +53,7 @@ public class deviceDTO {
 		return null;
 	}
 
-	public String getDeviceIndex() {
+	public int getDeviceIndex() {
 		if (this.device_id != null && this.device_id.length() > 0) {
 			// 简单的字符串处理：提取数字部分（如从 "A1" 提取 "1"）
 			String deviceId = this.device_id.trim();
@@ -71,9 +71,9 @@ public class deviceDTO {
 				}
 			}
 			
-			return result.length() > 0 ? result.toString() : null;
+			return result.length() > 0 ? Integer.parseInt(result.toString()) : 1;
 		}
-		return null;
+		return 1;
 	}
 
 	
