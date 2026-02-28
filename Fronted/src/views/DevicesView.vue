@@ -547,17 +547,25 @@ const submitDevice = async () => {
 	submitting.value = true
 	try {
 		// Convert personnel object to comma-separated string for backend
-		const personnelNumbers = []
+		// Now sending personnel names instead of user numbers
+		const personnelNames = []
 		for (let i = 1; i <= 3; i++) {
 			const personnel = deviceForm.value.personnels[`personnel${i}`]
 			if (personnel && personnel.is_active && personnel.user_number) {
-				personnelNumbers.push(personnel.user_number)
+				// Find the personnel name by user_number
+				const personInfo = availablePersons.value.find(p => p.userNumber === personnel.user_number)
+				if (personInfo && personInfo.userName) {
+					personnelNames.push(personInfo.userName)
+				} else {
+					// Fallback: use user_number if name not found
+					personnelNames.push(personnel.user_number)
+				}
 			}
 		}
 		
 		const backendData = {
 			...deviceForm.value,
-			personnels: personnelNumbers.join(',')
+			personnels: personnelNames.join(',')
 		}
 		
 		if (editingDeviceId.value) {

@@ -13,6 +13,8 @@ import tech.xuexinglab.seamless_attendance.DTO.ResponseDTO;
 import tech.xuexinglab.seamless_attendance.DTO.deviceDTO;
 import tech.xuexinglab.seamless_attendance.entity.device;
 import tech.xuexinglab.seamless_attendance.service.interfaces.deviceService;
+import tech.xuexinglab.seamless_attendance.service.GetFontsBitmapService;
+import tech.xuexinglab.seamless_attendance.service.DeviceBitmapService;
 import java.util.List;
 
 @RestController
@@ -21,6 +23,12 @@ public class deviceController {
 
 	@Autowired
 	private deviceService deviceService;
+
+	@Autowired
+	private GetFontsBitmapService getFontsBitmapService;
+
+	@Autowired
+	private DeviceBitmapService deviceBitmapService;
 
 	// 获取设备列表
 	@GetMapping("/devices/all")
@@ -55,15 +63,30 @@ public class deviceController {
 	public ResponseDTO<String> updateDevice(@PathVariable Integer id, @RequestBody deviceDTO deviceDTO) {
 		device device = new device();
 		device.setId(id);
+		// 获取源设备名称(eg:device_name:A1, origin_device_name:A)
+		device.setOriginDeviceName(deviceDTO.getOriginDeviceName());
 		device.setDevice_name(deviceDTO.getDevice_name());
 		device.setDevice_id(deviceDTO.getDevice_id());
 		device.setStudio_codes(deviceDTO.getStudio_codes());
 		device.setStatus("absent");
-		
+
 		if (deviceDTO.getPersonnels() != null) {
-				device.setPersonnels(deviceDTO.getPersonnels());
+			device.setPersonnels(deviceDTO.getPersonnels());
+		}
+
+		// 获取该设备中所有人员的人名
+		String[] personnels = deviceDTO.getPersonnels().split(",");
+
+		// 获取原始设备名称（如 "A"）
+		String originDeviceName = deviceDTO.getOriginDeviceName();
+
+		// 为每个人员生成字模并发送到 MQTT
+		for (String personnelName : personnels) {
+			if (personnelName != null && !personnelName.trim().isEmpty()) {
+				deviceBitmapService.processDevicePersonnelBitmap(originDeviceName,
+						personnelName.trim());
 			}
-		
+		}
 		int result = deviceService.updateDevice(device);
 		if (result > 0) {
 			return ResponseDTO.success("设备更新成功");

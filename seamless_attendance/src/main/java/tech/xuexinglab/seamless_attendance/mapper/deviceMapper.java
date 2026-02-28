@@ -53,4 +53,8 @@ public interface deviceMapper {
     // 更新设备状态
     @Update("UPDATE device SET status = #{status}, update_time = NOW() WHERE id = #{id}")
     int updateDeviceStatus(@Param("id") Integer id, @Param("status") String status);
+    
+    // 根据原始设备名称获取设备列表（如获取所有以"A"开头的设备）
+    @Select("SELECT * FROM device WHERE device_name LIKE CONCAT(#{originName}, '%')")
+    List<device> getDevicesByOriginName(@Param("originName") String originName);
 }
