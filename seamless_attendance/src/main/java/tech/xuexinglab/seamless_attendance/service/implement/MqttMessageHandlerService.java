@@ -20,68 +20,71 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 public class MqttMessageHandlerService {
-	private static final Logger logger = LoggerFactory.getLogger(MqttMessageHandlerService.class);
+        private static final Logger logger = LoggerFactory.getLogger(MqttMessageHandlerService.class);
 
-	@Autowired
-	private attendanceMapper attendanceMapper;
+        @Autowired
+        private attendanceMapper attendanceMapper;
 
-	@Autowired
-	private deviceMapper deviceMapper;
+        @Autowired
+        private deviceMapper deviceMapper;
 
-	@Autowired
-	private userMapper userMapper;
+        @Autowired
+        private userMapper userMapper;
 
-	@Autowired
-	private WebSocketController webSocketController;
+        @Autowired
+        private WebSocketController webSocketController;
 
-	// 日期时间格式器
-	private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-	private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
-	private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        // 日期时间格式器
+        private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
+        private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-	// 每天固定时间（晚上11点）执行工作时间统计和清零
-	@Scheduled(cron = "0 0 23 * * ?")
-	public void dailyWorkHoursSummary() {
-		try {
-			logger.info("Starting daily work hours summary");
-			
-			// 获取当前日期
-			String currentDate = LocalDateTime.now().format(DATE_FORMATTER);
-			
-			// 获取所有用户的状态
-			List<userStatus> allUserStatuses = attendanceMapper.getAllUserStatuses();
-			
-			for (userStatus status : allUserStatuses) {
-				String userNumber = status.getUser_number();
-				double workHours = status.getToday_work_hours();
-				
-				if (workHours > 0) {
-					// 更新考勤记录，保存当天工作时间
-					updateAttendanceRecord(userNumber, currentDate, 
-							status.getCheck_in_time(), status.getCheck_out_time(), 
-							workHours, "active");
-					
-					// 清零工作时间
-					status.setToday_work_hours(0.0);
-					status.setCheck_in_time(null);
-					status.setCheck_out_time(null);
-					status.setUpdate_time(LocalDateTime.now().format(DATETIME_FORMATTER));
-					attendanceMapper.updateUserStatus(status);
-					
-					logger.info("Daily work hours summary for user {}: {} hours", userNumber, workHours);
-				}
-			}
-			
-			logger.info("Daily work hours summary completed");
-		} catch (Exception e) {
-			logger.error("Error in daily work hours summary", e);
-		}
-	}
+        // 每天固定时间（晚上11点）执行工作时间统计和清零
+        @Scheduled(cron = "0 0 23 * * ?")
+        public void dailyWorkHoursSummary() {
+                try {
+                        logger.info("Starting daily work hours summary");
+
+                        // 获取当前日期
+                        String currentDate = LocalDateTime.now().format(DATE_FORMATTER);
+
+                        // 获取所有用户的状态
+                        List<userStatus> allUserStatuses = attendanceMapper.getAllUserStatuses();
+
+                        for (userStatus status : allUserStatuses) {
+                                String userNumber = status.getUser_number();
+                                double workHours = status.getToday_work_hours();
+
+                                if (workHours > 0) {
+                                        // 更新考勤记录，保存当天工作时间
+                                        updateAttendanceRecord(userNumber, currentDate,
+                                                        status.getCheck_in_time(), status.getCheck_out_time(),
+                                                        workHours, "active");
+
+                                        // 清零工作时间
+                                        status.setToday_work_hours(0.0);
+                                        status.setCheck_in_time(null);
+                                        status.setCheck_out_time(null);
+                                        status.setUpdate_time(LocalDateTime.now().format(DATETIME_FORMATTER));
+                                        attendanceMapper.updateUserStatus(status);
+
+                                        logger.info("Daily work hours summary for user {}: {} hours", userNumber,
+                                                        workHours);
+                                }
+                        }
+
+                        logger.info("Daily work hours summary completed");
+                } catch (Exception e) {
+                        logger.error("Error in daily work hours summary", e);
+                }
+        }
 
         // 处理MQTT状态消息
         public void handleStatusMessage(String deviceId, String payload) {
@@ -132,7 +135,9 @@ public class MqttMessageHandlerService {
                 if (personnelNumbers.size() > 0) {
                         String userNumber = personnelNumbers.get(0);
                         int status = message.getP1();
+                        // 这里应该确保传入的是学号, 而不是人员姓名
                         updateUserStatus(userNumber, status, currentDate, currentDateTime, currentTimeStr, currentTime);
+
                 }
 
                 // 处理P2对应第二个人员
@@ -154,15 +159,27 @@ public class MqttMessageHandlerService {
         private void updateUserStatus(String userNumber, int status,
                         String currentDate, String currentDateTime,
                         String currentTimeStr, LocalDateTime currentTime) {
+                
+
+                String result_status;
+
+                result_status   = status == 1 ? "active" : "absent";
                 try {
                         // 检查用户是否存在
                         user userInfo = userMapper.getUserInfoByUserNumber(userNumber);
+                        
                         if (userInfo == null) {
-                                logger.error("User not found: {}", userNumber);
-                                return;
+                                userInfo = userMapper.getUserInfoByName(userNumber);
+                                if (userInfo == null) {
+                                        logger.error("User number not found: {}", userNumber);
+                                        return;
+                                } else {
+                                        userNumber = userInfo.getUser_number();
+                                        logger.info("Use username for get user information.");
+                                }
                         }
 
-                        // 检查是否是假期
+                        // 检查是否是假期: 优先级更高
                         boolean isHoliday = isHoliday(currentDate);
                         if (isHoliday) {
                                 logger.info("Today is a holiday, skipping status update for user: {}", userNumber);
@@ -200,7 +217,7 @@ public class MqttMessageHandlerService {
 
                                         // 添加用户状态
                                         attendanceMapper.addUserStatus(currentStatus);
-
+                                        result_status = "active";
                                         // 更新考勤记录
                                         updateAttendanceRecord(userNumber, currentDate, currentTimeStr, null, 0.0,
                                                         "active");
@@ -217,6 +234,7 @@ public class MqttMessageHandlerService {
 
                                         // 添加用户状态
                                         attendanceMapper.addUserStatus(currentStatus);
+                                        result_status = "absent";
                                 }
                         } else {
                                 // 已存在用户状态
@@ -238,6 +256,7 @@ public class MqttMessageHandlerService {
 
                                                 // 更新用户状态
                                                 attendanceMapper.updateUserStatus(currentStatus);
+                                                result_status = "active";
                                         }
                                         // 保持在线状态，不做操作
                                 } else {
@@ -264,6 +283,7 @@ public class MqttMessageHandlerService {
 
                                                 // 更新用户状态
                                                 attendanceMapper.updateUserStatus(currentStatus);
+                                                result_status = "leave";
                                                 // 更新user表中的status字段
                                                 userMapper.updateUserStatus(userNumber, "leave");
                                                 // 更新考勤记录
@@ -279,7 +299,8 @@ public class MqttMessageHandlerService {
 
                         // 更新user表中的status字段
                         if (userInfo != null) {
-                                userInfo.setStatus(status == 1 ? "active" : "absent");
+                                // userInfo.setStatus(status == 1 ? "active" : "absent");
+                                userInfo.setStatus(result_status);
                                 // 使用现有的updateUserInfo方法更新用户状态
                                 userMapper.updateUserInfo(
                                                 userInfo.getId(),
@@ -298,7 +319,7 @@ public class MqttMessageHandlerService {
                         }
 
                         // 发送WebSocket消息到前端
-                        sendStatusUpdateToFrontend(userNumber, status == 1 ? "active" : "absent", currentDateTime);
+                        sendStatusUpdateToFrontend(userNumber, result_status, currentDateTime);
 
                 } catch (Exception e) {
                         logger.error("Error updating user status: {}", userNumber, e);

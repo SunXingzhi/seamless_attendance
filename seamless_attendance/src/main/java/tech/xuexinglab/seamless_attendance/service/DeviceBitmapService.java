@@ -42,8 +42,8 @@ public class DeviceBitmapService {
 	/**
 	 * 处理设备人员字模生成和发送
 	 * 
-	 * @param originDeviceName 原始设备名称（如 "A"）
-	 * @param personnelName    人员姓名（如 "孙浩翔"）
+	 * @param originDeviceName 
+	 * @param personnelName    
 	 */
 	public void processDevicePersonnelBitmap(String originDeviceName, String personnelName, int device_index) {
 		try {
@@ -62,8 +62,8 @@ public class DeviceBitmapService {
 			String hexData = getBitmapFromPythonService(originDeviceName, personnelName);
 			if (hexData == null || hexData.isEmpty()) {
 				logger.warn("Python 服务不可用，使用模拟字模数据");
-				// 生成模拟字模数据作为备用方案
-				hexData = generateMockBitmapData(personnelName);
+				// hexData = generateMockBitmapData(personnelName);
+
 			}
 
 			// 3. 分片字模数据
@@ -190,31 +190,6 @@ public class DeviceBitmapService {
 		}
 
 		return null;
-	}
-
-	/**
-	 * 生成模拟字模数据（当 Python 服务不可用时使用）
-	 */
-	private String generateMockBitmapData(String personnelName) {
-		// 生成简单的模拟字模数据
-		// 格式：24字节一行，共70行（200×70像素，每像素1位）
-		StringBuilder mockData = new StringBuilder();
-
-		// 生成固定的模拟数据（全0xFF表示空白图像）
-		for (int i = 0; i < 70; i++) {
-			for (int j = 0; j < 24; j++) {
-				mockData.append("0xFF");
-				if (j < 23) {
-					mockData.append(",");
-				}
-			}
-			if (i < 69) {
-				mockData.append(",\n  ");
-			}
-		}
-
-		logger.info("生成模拟字模数据: personnelName={}", personnelName);
-		return mockData.toString();
 	}
 
 	/**
