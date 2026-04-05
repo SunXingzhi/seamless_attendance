@@ -122,7 +122,8 @@ const submitForm = async () => {
 	submitting.value = true
 	try {
 		// 验证人员输入
-		const selectedPersonnelNumbers = [...selectedPersonnel.value, selectedAdmin.value]
+		// 使用Set去重，确保管理员不重复出现在成员列表中
+		const selectedPersonnelNumbers = [...new Set([...selectedPersonnel.value, selectedAdmin.value])]
 		
 		if (selectedPersonnelNumbers.length === 0) {
 			alert('请至少选择一个人员')

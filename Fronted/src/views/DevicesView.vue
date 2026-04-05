@@ -53,6 +53,7 @@
 				<div class="device-actions">
 					<button @click="connectDevice(device)" class="action-btn connect-btn">重新连接</button>
 					<button @click="editDevice(device)" class="action-btn edit-btn">编辑</button>
+					<button @click="resetDevice(device)" class="action-btn reset-btn">恢复初始设置</button>
 					<button @click="deleteDevice(device.id)" class="action-btn delete-btn">删除</button>
 				</div>
 			</div>
@@ -153,6 +154,62 @@
 				</div>
 			</div>
 		</div>
+
+		<div v-if="showPairingSuccessModal" class="modal-overlay">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h3>配对成功</h3>
+				</div>
+				<div class="success-prompt">
+					<div class="success-icon">
+						<img src="../assets/配对.png" style="width: 50px; height: 50px;" alt="成功图标">
+					</div>
+					<h4>配对完成！</h4>
+					<p>{{ pairingSuccessMessage }}</p>
+					<div class="paired-person-info">
+						<strong>配对信息：</strong>
+						<p>人员：{{ selectedPerson?.userName }} ({{ selectedPerson?.userNumber }})</p>
+						<p>设备：{{ deviceForm.device_name }}</p>
+						<p>位置：{{ currentPersonIndex === 'personnel1' ? '人员 1' : currentPersonIndex === 'personnel2' ? '人员 2' : '人员 3' }}</p>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button @click="closePairingSuccessModal" class="modal-confirm-btn">确定</button>
+				</div>
+			</div>
+		</div>
+
+		<div v-if="showResetModal" class="modal-overlay">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h3>恢复初始设置</h3>
+				</div>
+				<div class="reset-prompt">
+					<div class="reset-icon">
+						<img src="../assets/加载.png" style="width: 50px; height: 50px;" alt="重置图标">
+					</div>
+					<h4>正在恢复设备 {{ currentResetDevice?.deviceName }} 的初始设置</h4>
+					<p>此操作将清除设备数据并重新初始化蓝牙</p>
+					<div class="reset-status-text">{{ resetStatusText }}</div>
+					<div class="progress-bar">
+						<div class="progress-fill" :style="{ width: resetProgress + '%' }"></div>
+					</div>
+					<div class="reset-stages">
+						<div class="stage" :class="{ 'active': resetStage >= 1, 'completed': resetStage > 1 }">
+							<span class="stage-number">1</span>
+							<span class="stage-text">清除设备数据</span>
+						</div>
+						<div class="stage" :class="{ 'active': resetStage >= 2, 'completed': resetStage > 2 }">
+							<span class="stage-number">2</span>
+							<span class="stage-text">初始化蓝牙</span>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button @click="cancelReset" class="modal-cancel-btn">取消</button>
+				</div>
+			</div>
+		</div>
 	</div>
 </template>
 
@@ -173,6 +230,8 @@ const error = computed(() => deviceStore.error)
 const showAddDeviceModal = ref(false)
 const showPersonModal = ref(false)
 const showPairingModal = ref(false)
+const showPairingSuccessModal = ref(false)
+const showResetModal = ref(false)
 const editingDeviceId = ref(null)
 const submitting = ref(false)
 const currentPersonIndex = ref(null)
@@ -182,6 +241,15 @@ const pairingStatusText = ref('正在等待配对...')
 const pairingProgress = ref(0)
 const pairingInterval = ref(null)
 const pairingTimeout = ref(null)
+
+const resetStatusText = ref('正在准备重置...')
+const resetProgress = ref(0)
+const resetStage = ref(0)
+const currentResetDevice = ref(null)
+const resetInterval = ref(null)
+const resetTimeout = ref(null)
+
+const pairingSuccessMessage = ref('')
 
 const pairingStatuses = reactive(JSON.parse(localStorage.getItem('pairingStatuses') || '{}'))
 const pairingComplete = ref({
@@ -254,6 +322,21 @@ onMounted(async () => {
 			message: message.message || '配对成功'
 		}
 		console.log('已更新全局配对状态:', pairingComplete.value)
+	})
+
+	webSocketService.on('reset', async (message) => {
+		console.log('接收到重置完成消息:', message)
+		
+		// 清除可能存在的超时
+		clearTimeout(resetTimeout.value)
+		
+		if (resetStage.value === 1) {
+			// fullreset完成，开始reset
+			proceedToStage2()
+		} else if (resetStage.value === 2) {
+			// reset完成
+			completeReset()
+		}
 	})
 })
 
@@ -335,6 +418,84 @@ const connectDevice = async (device) => {
 	}
 }
 
+const resetDevice = async (device) => {
+	if (confirm(`确定要恢复设备 ${device.deviceName} 的初始设置吗？此操作将清除所有数据。`)) {
+		currentResetDevice.value = device
+		showResetModal.value = true
+		resetStage.value = 1
+		resetProgress.value = 0
+		resetStatusText.value = '正在准备清除设备数据...'
+
+		try {
+			await mqttService.fullResetDevice(device.deviceName)
+			resetStatusText.value = '正在等待设备数据清除完成...'
+			
+			// 设置超时，如果3秒内未收到设备反馈，自动进入第二阶段
+			resetTimeout.value = setTimeout(() => {
+				if (resetStage.value === 1) {
+					console.log('未收到设备反馈，自动进入第二阶段')
+					proceedToStage2()
+				}
+			}, 2500)
+		} catch (error) {
+			console.error('发送fullreset命令失败:', error)
+			resetStatusText.value = '清除设备数据失败'
+			cancelReset()
+		}
+	}
+}
+
+// 进入第二阶段：发送reset命令并等待蓝牙初始化
+const proceedToStage2 = async () => {
+	// 清除之前的超时
+	clearTimeout(resetTimeout.value)
+	
+	resetStage.value = 2
+	resetStatusText.value = '设备数据清除完成，正在初始化蓝牙...'
+	resetProgress.value = 50
+	
+	try {
+		await mqttService.resetDevice(currentResetDevice.value.deviceName)
+		resetStatusText.value = '正在等待蓝牙初始化完成...'
+		
+		// 设置超时，如果3秒内未收到设备反馈，自动完成重置
+		resetTimeout.value = setTimeout(() => {
+			if (resetStage.value === 2) {
+				console.log('未收到设备反馈，自动完成重置')
+				completeReset()
+			}
+		}, 2500)
+	} catch (error) {
+		console.error('发送reset命令失败:', error)
+		resetStatusText.value = '蓝牙初始化失败'
+		cancelReset()
+	}
+}
+
+// 完成重置过程
+const completeReset = () => {
+	// 清除之前的超时
+	clearTimeout(resetTimeout.value)
+	
+	resetProgress.value = 100
+	resetStatusText.value = '恢复初始设置完成'
+	setTimeout(() => {
+		showResetModal.value = false
+		resetForm()
+		fetchDevices() // 刷新设备列表
+	}, 2000)
+}
+
+const cancelReset = () => {
+	showResetModal.value = false
+	resetStage.value = 0
+	resetProgress.value = 0
+	resetStatusText.value = '正在准备重置...'
+	currentResetDevice.value = null
+	clearInterval(resetInterval.value)
+	clearTimeout(resetTimeout.value)
+}
+
 const refreshDevices = async () => {
 	await fetchDevices()
 }
@@ -378,6 +539,13 @@ const confirmPersonSelection = () => {
 const startPairingSimulation = async (personToPair, personnelKey) => {
 	console.log('开始配对流程 - personnelKey:', personnelKey, 'person:', personToPair)
 
+	// 清除所有现有的配对状态，确保只有一个配对在进行
+	for (const existingKey in pairingStatuses) {
+		if (pairingStatuses[existingKey].status === 'pairing') {
+			pairingStatuses[existingKey].status = 'none'
+		}
+	}
+	
 	const key = `0,${personnelKey}`
 	pairingStatuses[key] = {
 		status: 'pairing',
@@ -489,7 +657,26 @@ const handlePairingComplete = async (pairingData) => {
 			clearInterval(pairingInterval.value)
 			clearTimeout(pairingTimeout.value)
 
-			alert(`设备 ${deviceName} 配对完成！`)
+			// 查找对应的人员信息
+			const person = personnelStore.personnelList.find(p => p.userNumber === userNumber)
+			if (person) {
+				selectedPerson.value = {
+					userId: person.userId,
+					userName: person.userName,
+					userNumber: person.userNumber
+				}
+			} else {
+				// 如果找不到，至少设置用户编号
+				selectedPerson.value = {
+					userId: null,
+					userName: userNumber,
+					userNumber: userNumber
+				}
+			}
+			currentPersonIndex.value = targetPersonnelKey
+
+			pairingSuccessMessage.value = `设备 ${deviceName} 与人员 ${userNumber} 配对成功！`
+			showPairingSuccessModal.value = true
 		} catch (error) {
 			console.error('分配人员失败:', error)
 			alert('配对完成但分配人员失败: ' + error.message)
@@ -518,6 +705,13 @@ const cancelPairing = () => {
 
 	currentPersonIndex.value = null
 	selectedPerson.value = null
+}
+
+const closePairingSuccessModal = () => {
+	showPairingSuccessModal.value = false
+	pairingSuccessMessage.value = ''
+	selectedPerson.value = null
+	currentPersonIndex.value = null
 }
 
 const removePerson = async (personnelKey) => {
@@ -821,6 +1015,15 @@ const getPairingStatusText = (personnelKey) => {
 	background: #f78989;
 }
 
+.reset-btn {
+	background: #f39c12;
+	color: white;
+}
+
+.reset-btn:hover {
+	background: #e67e22;
+}
+
 .modal-overlay {
 	position: fixed;
 	top: 0;
@@ -1111,6 +1314,46 @@ const getPairingStatusText = (personnelKey) => {
 	transition: width 0.3s ease;
 }
 
+.success-prompt {
+	text-align: center;
+	padding: 30px 20px;
+}
+
+.success-icon {
+	margin-bottom: 15px;
+}
+
+.success-prompt h4 {
+	margin: 0 0 10px 0;
+	color: #333;
+}
+
+.success-prompt p {
+	margin: 0 0 20px 0;
+	color: #666;
+}
+
+.paired-person-info {
+	background: #f0f9ff;
+	border: 1px solid #e0e6ed;
+	border-radius: 8px;
+	padding: 15px;
+	margin-top: 15px;
+	text-align: left;
+}
+
+.paired-person-info strong {
+	color: #333;
+	display: block;
+	margin-bottom: 10px;
+}
+
+.paired-person-info p {
+	margin: 5px 0;
+	color: #666;
+	font-size: 0.9rem;
+}
+
 .form-actions {
 	display: flex;
 	justify-content: flex-end;
@@ -1155,6 +1398,94 @@ const getPairingStatusText = (personnelKey) => {
 	cursor: not-allowed;
 }
 
+.reset-prompt {
+	text-align: center;
+	padding: 30px 20px;
+}
+
+.reset-icon {
+	margin-bottom: 15px;
+}
+
+.reset-prompt h4 {
+	margin: 0 0 10px 0;
+	color: #333;
+}
+
+.reset-prompt p {
+	margin: 0 0 20px 0;
+	color: #666;
+}
+
+.reset-status-text {
+	margin-bottom: 15px;
+	color: #f39c12;
+	font-weight: bold;
+}
+
+.reset-stages {
+	display: flex;
+	justify-content: center;
+	gap: 20px;
+	margin-top: 20px;
+}
+
+.stage {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-radius: 20px;
+	background: #f5f5f5;
+	transition: all 0.3s ease;
+}
+
+.stage.active {
+	background: #e6f7ff;
+	border: 1px solid #409eff;
+}
+
+.stage.completed {
+	background: #d4edda;
+	border: 1px solid #67c23a;
+}
+
+.stage-number {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.8rem;
+	font-weight: bold;
+	background: #999;
+	color: white;
+}
+
+.stage.active .stage-number {
+	background: #409eff;
+}
+
+.stage.completed .stage-number {
+	background: #67c23a;
+}
+
+.stage-text {
+	font-size: 0.9rem;
+	color: #666;
+}
+
+.stage.active .stage-text {
+	color: #409eff;
+	font-weight: bold;
+}
+
+.stage.completed .stage-text {
+	color: #67c23a;
+	font-weight: bold;
+}
+
 @media (max-width: 768px) {
 	.device-list {
 		grid-template-columns: 1fr;
@@ -1170,6 +1501,11 @@ const getPairingStatusText = (personnelKey) => {
 	
 	.modal-content {
 		width: 95%;
+	}
+	
+	.reset-stages {
+		flex-direction: column;
+		gap: 10px;
 	}
 }
 </style>

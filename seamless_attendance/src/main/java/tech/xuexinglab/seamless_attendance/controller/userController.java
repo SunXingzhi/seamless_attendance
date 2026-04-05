@@ -40,14 +40,15 @@ public class userController {
 
         // 更新人员信息
         @PutMapping("user/info/{id}")
-        public ResponseDTO<String> updateUserInfo(@PathVariable long id, @RequestBody userDTO userDTO) {
+        public ResponseDTO<user> updateUserInfo(@PathVariable long id, @RequestBody userDTO userDTO) {
                 userDTO.setUserId((int) id);
                 userService.updateUserInfo(userDTO);
-                return ResponseDTO.success("该用户信息更新成功");
+                // 获取用户新的信息
+                return ResponseDTO.success(userService.getUserInfoByUserNumber(userDTO.getUser_number()));
         }
 
         // 查看人员考勤记录
-        // to do 分页/最多显示限制
+        // TODO 分页/最多显示限制
         @GetMapping("users/attendanceRecords/all")
         public ResponseDTO<?> getUserAttendanceRecord() {
                 // debug

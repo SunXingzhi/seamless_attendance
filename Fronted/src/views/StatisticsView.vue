@@ -1,360 +1,437 @@
 <template>
 	<div class="statistics-view">
-	<h2>统计分析</h2>
-	
-	<!-- 错误信息 -->
-	<div v-if="error" class="error-message">
-		{{ error }}
-	</div>
-	
-	<!-- 加载状态 -->
-	<div v-if="loading" class="loading-overlay">
-		<div class="loading-spinner"></div>
-		<p>加载中...</p>
-	</div>
-	<div class="statistics-filters">
-		<div class="filter-group">
-		<label>时间范围:</label>
-		<select v-model="timeRange">
-			<option value="week">近一周</option>
-			<option value="month">近一个月</option>
-			<option value="half-year">近半年</option>
-			<option value="year">近一年</option>
-			<option value="custom">自定义</option>
-		</select>
-		<div v-if="timeRange === 'custom'" class="date-picker">
-			<input type="date" v-model="startDate" />
-			<span>至</span>
-			<input type="date" v-model="endDate" />
+		<h2>统计分析</h2>
+
+		<!-- 错误信息 -->
+		<div v-if="error" class="error-message">
+			{{ error }}
 		</div>
+
+		<!-- 加载状态 -->
+		<div v-if="loading" class="loading-overlay">
+			<div class="loading-spinner"></div>
+			<p>加载中...</p>
 		</div>
-		<div class="filter-group">
-		<label>统计对象:</label>
-		<select v-model="statisticsType">
-			<option value="all">总体</option>
-			<option value="individual">个人</option>
-		</select>
-		<select v-if="statisticsType === 'individual'" v-model="selectedPerson">
-			<option v-for="person in personnel" :key="person.userId" :value="person.userId">
-			{{ person.userName }}
-			</option>
-		</select>
-		</div>
-		<div class="filter-group">
-		<label>统计内容:</label>
-		<select v-model="statisticsContent">
-			<option value="activity">活跃度</option>
-			<option value="attendance">出勤率</option>
-			<option value="full-attendance">满勤次数</option>
-		</select>
-		</div>
-		<button @click="generateReport" class="generate-btn">生成报告</button>
-	</div>
-	
-	<div class="statistics-summary">
-		<div class="summary-card">
-		<h4>总人数</h4>
-		<p class="summary-value">{{ personnel.length }}</p>
-		</div>
-		<div class="summary-card">
-		<h4>今日到勤</h4>
-		<p class="summary-value">{{ activeCount }}</p>
-		</div>
-		<div class="summary-card">
-		<h4>今日迟到</h4>
-		<p class="summary-value">{{ lateCount }}</p>
-		</div>
-		<div class="summary-card">
-		<h4>今日离开</h4>
-		<p class="summary-value">{{ leaveCount }}</p>
-		</div>
-		<div class="summary-card">
-		<h4>今日缺勤</h4>
-		<p class="summary-value">{{ absentCount }}</p>
-		</div>
-		<div class="summary-card">
-		<h4>假期人数</h4>
-		<p class="summary-value">{{ holidayCount }}</p>
-		</div>
-		<div class="summary-card">
-		<h4>请假人数</h4>
-		<p class="summary-value">{{ excusedCount }}</p>
-		</div>
-		<div class="summary-card">
-		<h4>出勤率</h4>
-		<p class="summary-value">{{ attendanceRate }}%</p>
-		</div>
-	</div>
-	
-	<div class="statistics-charts">
-		<div class="chart-container">
-		<h3>活跃度统计</h3>
-		<div class="activity-grid">
-			<div 
-			v-for="(day, index) in 365" 
-			:key="index"
-			class="activity-day"
-			:class="getActivityLevel(index)"
-			:title="getDayTitle(index)"
-			></div>
-		</div>
-		<div class="activity-legend">
-			<span>活跃度:</span>
-			<div class="legend-item">
-			<div class="legend-color high"></div>
-			<span>高</span>
+
+		<div class="statistics-filters">
+			<div class="filter-group">
+				<label>统计对象:</label>
+				<select v-model="statisticsTarget">
+					<option value="user">个人统计</option>
+					<option value="studio">工作室统计</option>
+				</select>
 			</div>
-			<div class="legend-item">
-			<div class="legend-color medium"></div>
-			<span>中</span>
+
+			<div v-if="statisticsTarget === 'user'" class="filter-group">
+				<label>选择人员:</label>
+				<select v-model="selectedUserNumber">
+					<option value="">请选择人员</option>
+					<option v-for="person in personnel" :key="person.userNumber" :value="person.userNumber">
+						{{ person.userName }} ({{ person.userNumber }})
+					</option>
+				</select>
 			</div>
-			<div class="legend-item">
-			<div class="legend-color low"></div>
-			<span>低</span>
+
+			<div v-if="statisticsTarget === 'studio'" class="filter-group">
+				<label>选择工作室:</label>
+				<select v-model="selectedStudioId">
+					<option value="">请选择工作室</option>
+					<option v-for="studio in studios" :key="studio.id" :value="studio.id">
+						{{ studio.name }}
+					</option>
+				</select>
 			</div>
-			<div class="legend-item">
-			<div class="legend-color none"></div>
-			<span>无</span>
+
+			<div class="filter-group">
+				<label>时间周期:</label>
+				<select v-model="timePeriod">
+					<option value="daily">每日</option>
+					<option value="weekly">每周</option>
+					<option value="monthly">每月</option>
+					<option value="yearly">每年</option>
+				</select>
+			</div>
+
+			<div class="filter-group">
+				<label>数据范围:</label>
+				<select v-model="dataLimit">
+					<option :value="7">最近7天</option>
+					<option :value="30">最近30天</option>
+					<option :value="90">最近90天</option>
+					<option :value="365">最近一年</option>
+				</select>
+			</div>
+
+			<button @click="fetchStatisticsData" class="generate-btn">刷新数据</button>
+		</div>
+
+		<!-- 统计概览 -->
+		<div v-if="overviewData" class="statistics-summary">
+			<div class="summary-card">
+				<h4>总人数</h4>
+				<p class="summary-value">{{ overviewData.totalUsers }}</p>
+			</div>
+			<div class="summary-card">
+				<h4>今日到勤</h4>
+				<p class="summary-value">{{ overviewData.todayAttendance }}</p>
+			</div>
+			<div class="summary-card">
+				<h4>今日迟到</h4>
+				<p class="summary-value">{{ overviewData.todayLate }}</p>
+			</div>
+			<div class="summary-card">
+				<h4>今日早退</h4>
+				<p class="summary-value">{{ overviewData.todayEarlyLeave }}</p>
+			</div>
+			<div class="summary-card">
+				<h4>今日缺勤</h4>
+				<p class="summary-value">{{ overviewData.todayAbsent }}</p>
+			</div>
+			<div class="summary-card">
+				<h4>出勤率</h4>
+				<p class="summary-value">{{ overviewData.attendanceRate }}%</p>
 			</div>
 		</div>
+
+		<!-- 用户统计详情 -->
+		<div v-if="statisticsTarget === 'user' && selectedUserNumber && userStats.length > 0" class="user-stats-section">
+			<h3>{{ selectedUserName }} 的统计数据</h3>
+			<div class="stats-table">
+				<table>
+					<thead>
+						<tr>
+							<th>日期</th>
+							<th>到勤次数</th>
+							<th>迟到次数</th>
+							<th>早退次数</th>
+							<th>缺勤次数</th>
+							<th>工作时长(小时)</th>
+							<th>出勤率(%)</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="stat in userStats" :key="stat.date || stat.weekStartDate || stat.month || stat.year">
+							<td>{{ formatDate(stat) }}</td>
+							<td>{{ stat.attendanceCount || stat.totalAttendance }}</td>
+							<td>{{ stat.lateCount || stat.totalLate }}</td>
+							<td>{{ stat.earlyLeaveCount || stat.totalEarlyLeave }}</td>
+							<td>{{ stat.absentCount || stat.totalAbsent }}</td>
+							<td>{{ stat.totalWorkHours ? stat.totalWorkHours.toFixed(1) : '-' }}</td>
+							<td>{{ stat.attendanceRate ? stat.attendanceRate.toFixed(1) : '-' }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 		</div>
-		<div class="chart-container">
-		<h3>趋势分析</h3>
-		<div class="trend-chart">
-			<canvas id="trendCanvas" width="400" height="300"></canvas>
+
+		<!-- 工作室统计详情 -->
+		<div v-if="statisticsTarget === 'studio' && selectedStudioId && studioStats.length > 0" class="studio-stats-section">
+			<h3>{{ selectedStudioName }} 的统计数据</h3>
+			<div class="stats-table">
+				<table>
+					<thead>
+						<tr>
+							<th>日期</th>
+							<th>总人数</th>
+							<th>到勤人数</th>
+							<th>迟到人数</th>
+							<th>早退人数</th>
+							<th>缺勤人数</th>
+							<th>出勤率(%)</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="stat in studioStats" :key="stat.date || stat.weekStartDate || stat.month || stat.year">
+							<td>{{ formatDate(stat) }}</td>
+							<td>{{ stat.totalUsers }}</td>
+							<td>{{ stat.attendanceCount }}</td>
+							<td>{{ stat.lateCount }}</td>
+							<td>{{ stat.earlyLeaveCount }}</td>
+							<td>{{ stat.absentCount }}</td>
+							<td>{{ stat.attendanceRate ? stat.attendanceRate.toFixed(1) : '-' }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 		</div>
+
+		<!-- 图表区域 -->
+		<div class="statistics-charts">
+			<div class="chart-container">
+				<h3>趋势分析</h3>
+				<div class="trend-chart">
+					<canvas id="trendCanvas" width="600" height="300"></canvas>
+				</div>
+			</div>
 		</div>
-	</div>
 	</div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { usePersonnelStore } from '../stores/personnel'
+import { useStudioStore } from '../stores/studio'
 import { statisticsService } from '../services/statistics'
 
 const personnelStore = usePersonnelStore()
-const personnel = computed(() => personnelStore.personnelList)
+const studioStore = useStudioStore()
 
-const timeRange = ref('week')
-const startDate = ref('')
-const endDate = ref('')
-const statisticsType = ref('all')
-const selectedPerson = ref('')
-const statisticsContent = ref('activity')
+const personnel = computed(() => personnelStore.personnelList)
+const studios = computed(() => studioStore.studioList)
+
+// 过滤器状态
+const statisticsTarget = ref('user') // 'user' 或 'studio'
+const selectedUserNumber = ref('')
+const selectedStudioId = ref('')
+const timePeriod = ref('daily') // 'daily', 'weekly', 'monthly', 'yearly'
+const dataLimit = ref(7)
 
 // 加载状态和错误处理
 const loading = ref(false)
 const error = ref(null)
 
-// 统计数据
-const statisticsData = ref({
-	activeCount: 0,
-	lateCount: 0,
-	leaveCount: 0,
-	absentCount: 0,
-	holidayCount: 0,
-	excusedCount: 0,
-	attendanceRate: 0
+// 数据状态
+const overviewData = ref(null)
+const userStats = ref([])
+const studioStats = ref([])
+
+// 计算属性
+const selectedUserName = computed(() => {
+	const user = personnel.value.find(p => p.userNumber === selectedUserNumber.value)
+	return user ? user.userName : ''
 })
 
-// 活跃度数据
-const activityData = ref([])
+const selectedStudioName = computed(() => {
+	const studio = studios.value.find(s => s.id === selectedStudioId.value)
+	return studio ? studio.name : ''
+})
 
-// 趋势数据
-const trendData = ref([])
+// 获取统计概览数据
+const fetchOverviewData = async () => {
+	try {
+		const today = new Date().toISOString().split('T')[0]
+		const response = await statisticsService.getStatisticsOverview(today)
+		overviewData.value = response.data
+	} catch (err) {
+		console.error('获取统计概览失败:', err)
+		// 设置默认数据
+		overviewData.value = {
+			totalUsers: personnel.value.length,
+			todayAttendance: 0,
+			todayLate: 0,
+			todayEarlyLeave: 0,
+			todayAbsent: 0,
+			attendanceRate: 0
+		}
+	}
+}
 
-// 统计数据计算
-const activeCount = computed(() => statisticsData.value.activeCount)
-const lateCount = computed(() => statisticsData.value.lateCount)
-const leaveCount = computed(() => statisticsData.value.leaveCount)
-const absentCount = computed(() => statisticsData.value.absentCount)
-const holidayCount = computed(() => statisticsData.value.holidayCount)
-const excusedCount = computed(() => statisticsData.value.excusedCount)
-const attendanceRate = computed(() => statisticsData.value.attendanceRate)
+// 获取用户统计数据
+const fetchUserStats = async () => {
+	if (!selectedUserNumber.value) return
 
-// 获取统计数据
-const fetchStatistics = async () => {
+	try {
+		let response
+		const limit = parseInt(dataLimit.value)
+
+		switch (timePeriod.value) {
+			case 'daily':
+				response = await statisticsService.getUserDailyStats(selectedUserNumber.value, limit)
+				break
+			case 'weekly':
+				response = await statisticsService.getUserWeeklyStats(selectedUserNumber.value, limit)
+				break
+			case 'monthly':
+				response = await statisticsService.getUserMonthlyStats(selectedUserNumber.value, limit)
+				break
+			case 'yearly':
+				response = await statisticsService.getUserYearlyStats(selectedUserNumber.value, limit)
+				break
+		}
+
+		userStats.value = Array.isArray(response.data) ? response.data : [response.data]
+		drawTrendChart(userStats.value)
+	} catch (err) {
+		console.error('获取用户统计失败:', err)
+		userStats.value = []
+		error.value = '获取用户统计数据失败'
+	}
+}
+
+// 获取工作室统计数据
+const fetchStudioStats = async () => {
+	if (!selectedStudioId.value) return
+
+	try {
+		let response
+		const limit = parseInt(dataLimit.value)
+
+		switch (timePeriod.value) {
+			case 'daily':
+				response = await statisticsService.getStudioDailyStats(selectedStudioId.value, limit)
+				break
+			case 'weekly':
+				response = await statisticsService.getStudioWeeklyStats(selectedStudioId.value, limit)
+				break
+			case 'monthly':
+				response = await statisticsService.getStudioMonthlyStats(selectedStudioId.value, limit)
+				break
+			case 'yearly':
+				response = await statisticsService.getStudioYearlyStats(selectedStudioId.value, limit)
+				break
+		}
+
+		studioStats.value = Array.isArray(response.data) ? response.data : [response.data]
+		drawTrendChart(studioStats.value)
+	} catch (err) {
+		console.error('获取工作室统计失败:', err)
+		studioStats.value = []
+		error.value = '获取工作室统计数据失败'
+	}
+}
+
+// 统一的获取数据方法
+const fetchStatisticsData = async () => {
 	loading.value = true
 	error.value = null
+
 	try {
-		const params = {
-			timeRange: timeRange.value,
-			startDate: startDate.value,
-			endDate: endDate.value,
-			statisticsType: statisticsType.value,
-			selectedPerson: selectedPerson.value,
-			statisticsContent: statisticsContent.value
+		await fetchOverviewData()
+
+		if (statisticsTarget.value === 'user') {
+			await fetchUserStats()
+		} else {
+			await fetchStudioStats()
 		}
-		const response = await statisticsService.getStatistics(params)
-		statisticsData.value = response.data || response
 	} catch (err) {
 		error.value = '获取统计数据失败，请检查后端服务是否运行'
 		console.error('获取统计数据失败:', err)
-		// 使用默认数据，避免页面显示异常
-		statisticsData.value = {
-			activeCount: 0,
-			lateCount: 0,
-			leaveCount: 0,
-			absentCount: 0,
-			holidayCount: 0,
-			excusedCount: 0,
-			attendanceRate: 0
-		}
 	} finally {
 		loading.value = false
 	}
 }
 
-// 获取活跃度统计
-const fetchActivityStatistics = async () => {
-	loading.value = true
-	error.value = null
-	try {
-		const params = {
-			timeRange: timeRange.value,
-			startDate: startDate.value,
-			endDate: endDate.value
+// 格式化日期显示
+const formatDate = (stat) => {
+	if (stat.date) return stat.date
+	if (stat.weekStartDate) return `${stat.weekStartDate} (周)`
+	if (stat.month) return `${stat.month}月`
+	if (stat.year) return `${stat.year}年`
+	return '-'
+}
+
+// 绘制趋势图表
+const drawTrendChart = (data) => {
+	const canvas = document.getElementById('trendCanvas')
+	if (!canvas || !data || data.length === 0) return
+
+	const ctx = canvas.getContext('2d')
+	if (!ctx) return
+
+	// 清空画布
+	ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+	const width = canvas.width - 80
+	const height = canvas.height - 60
+	const padding = 40
+
+	// 获取数据值
+	const values = data.map(item => {
+		// 根据不同时间周期获取对应的值
+		if (timePeriod.value === 'daily') {
+			return item.attendanceCount || item.totalAttendance || 0
+		} else if (timePeriod.value === 'weekly' || timePeriod.value === 'monthly' || timePeriod.value === 'yearly') {
+			return item.attendanceRate || 0
 		}
-		const response = await statisticsService.getActivityStatistics(params)
-		activityData.value = response.data || response
-	} catch (err) {
-		error.value = '获取活跃度统计失败，请检查后端服务是否运行'
-		console.error('获取活跃度统计失败:', err)
-		// 清空活跃度数据，避免显示模拟数据
-		activityData.value = []
-	} finally {
-		loading.value = false
-	}
-}
+		return 0
+	})
 
-// 获取趋势分析
-const fetchTrendAnalysis = async () => {
-	loading.value = true
-	error.value = null
-	try {
-		const params = {
-			timeRange: timeRange.value,
-			startDate: startDate.value,
-			endDate: endDate.value,
-			statisticsContent: statisticsContent.value
+	if (values.length === 0) return
+
+	const maxValue = Math.max(...values)
+	const minValue = Math.min(...values)
+	const range = maxValue - minValue || 1
+
+	const stepX = width / (values.length - 1 || 1)
+	const stepY = height / range
+
+	// 绘制坐标轴
+	ctx.strokeStyle = '#ddd'
+	ctx.lineWidth = 1
+	ctx.beginPath()
+	ctx.moveTo(padding, padding)
+	ctx.lineTo(padding, height + padding)
+	ctx.lineTo(width + padding, height + padding)
+	ctx.stroke()
+
+	// 绘制网格线
+	ctx.strokeStyle = '#f0f0f0'
+	ctx.lineWidth = 1
+	for (let i = 0; i <= 5; i++) {
+		const y = padding + (height / 5) * i
+		ctx.beginPath()
+		ctx.moveTo(padding, y)
+		ctx.lineTo(width + padding, y)
+		ctx.stroke()
+	}
+
+	// 绘制数据线
+	ctx.strokeStyle = '#409eff'
+	ctx.lineWidth = 3
+	ctx.beginPath()
+
+	values.forEach((value, index) => {
+		const x = padding + index * stepX
+		const y = height + padding - ((value - minValue) / range) * height
+
+		if (index === 0) {
+			ctx.moveTo(x, y)
+		} else {
+			ctx.lineTo(x, y)
 		}
-		const response = await statisticsService.getTrendAnalysis(params)
-		trendData.value = response.data || response
-		drawTrendChart(response.data || response)
-	} catch (err) {
-		error.value = '获取趋势分析失败，请检查后端服务是否运行'
-		console.error('获取趋势分析失败:', err)
-		// 清空趋势数据，使用默认数据绘制图表
-		trendData.value = []
-		drawTrendChart([])
-	} finally {
-		loading.value = false
-	}
+	})
+
+	ctx.stroke()
+
+	// 绘制数据点
+	ctx.fillStyle = '#409eff'
+	values.forEach((value, index) => {
+		const x = padding + index * stepX
+		const y = height + padding - ((value - minValue) / range) * height
+
+		ctx.beginPath()
+		ctx.arc(x, y, 4, 0, 2 * Math.PI)
+		ctx.fill()
+	})
+
+	// 添加数值标签
+	ctx.fillStyle = '#666'
+	ctx.font = '12px Arial'
+	ctx.textAlign = 'center'
+	values.forEach((value, index) => {
+		if (index % Math.ceil(values.length / 10) === 0) { // 每隔几个点显示标签
+			const x = padding + index * stepX
+			const y = height + padding - ((value - minValue) / range) * height - 15
+			ctx.fillText(value.toString(), x, y)
+		}
+	})
 }
 
-// 活跃度计算
-const getActivityLevel = (index) => {
-	if (activityData.value[index]) {
-		return activityData.value[index].level || 'none'
-	}
-	return 'none'
-}
-
-const getDayTitle = (index) => {
-	if (activityData.value[index]) {
-		return activityData.value[index].date || ''
-	}
-	const date = new Date()
-	date.setDate(date.getDate() - (365 - index))
-	return date.toLocaleDateString()
-}
-
-// 图表初始化
+// 初始化
 onMounted(async () => {
 	await personnelStore.fetchPersonnelList()
-	await fetchStatistics()
-	await fetchActivityStatistics()
-	await fetchTrendAnalysis()
+	await studioStore.fetchStudioList()
+	await fetchStatisticsData()
 })
 
 // 监听筛选条件变化
 watch(
-	[timeRange, startDate, endDate, statisticsType, selectedPerson, statisticsContent],
+	[statisticsTarget, selectedUserNumber, selectedStudioId, timePeriod, dataLimit],
 	async () => {
-		await fetchStatistics()
-		await fetchActivityStatistics()
-		await fetchTrendAnalysis()
+		await fetchStatisticsData()
 	},
 	{ deep: true }
 )
-
-const drawTrendChart = (data) => {
-	const canvas = document.getElementById('trendCanvas')
-	if (!canvas) return
-	
-	const ctx = canvas.getContext('2d')
-	if (!ctx) return
-	
-	// 清空画布
-	ctx.clearRect(0, 0, canvas.width, canvas.height)
-	
-	// 使用后端数据或默认数据
-	const trendData = data && data.length > 0 ? data : [65, 59, 80, 81, 56, 55, 40, 60, 75, 85, 60, 50]
-	const width = canvas.width - 40
-	const height = canvas.height - 40
-	const stepX = width / (trendData.length - 1)
-	const stepY = height / 100
-	
-	// 绘制简单的趋势线
-	ctx.beginPath()
-	ctx.moveTo(20, 20 + height - trendData[0] * stepY)
-	
-	for (let i = 1; i < trendData.length; i++) {
-	ctx.lineTo(20 + i * stepX, 20 + height - trendData[i] * stepY)
-	}
-	
-	ctx.strokeStyle = '#409eff'
-	ctx.lineWidth = 2
-	ctx.stroke()
-	
-	// 绘制坐标轴
-	ctx.beginPath()
-	ctx.moveTo(20, 20)
-	ctx.lineTo(20, 20 + height)
-	ctx.lineTo(20 + width, 20 + height)
-	ctx.strokeStyle = '#ddd'
-	ctx.lineWidth = 1
-	ctx.stroke()
-}
-
-const generateReport = async () => {
-	loading.value = true
-	error.value = null
-	try {
-		const params = {
-			timeRange: timeRange.value,
-			startDate: startDate.value,
-			endDate: endDate.value,
-			statisticsType: statisticsType.value,
-			selectedPerson: selectedPerson.value,
-			statisticsContent: statisticsContent.value
-		}
-		const response = await statisticsService.generateReport(params)
-		console.log('生成报告响应:', response)
-		// 处理报告生成结果，例如下载报告或显示报告链接
-		if (response.url) {
-			window.open(response.url, '_blank')
-		} else {
-			alert('报告生成成功')
-		}
-	} catch (err) {
-		error.value = '生成报告失败'
-		console.error('生成报告失败:', err)
-	} finally {
-		loading.value = false
-	}
-}
 </script>
 
 <style scoped>
@@ -490,10 +567,56 @@ const generateReport = async () => {
 	color: #409eff;
 }
 
+/* 统计表格样式 */
+.user-stats-section, .studio-stats-section {
+	margin: 20px 0;
+	background: white;
+	border-radius: 8px;
+	padding: 20px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.user-stats-section h3, .studio-stats-section h3 {
+	margin-top: 0;
+	color: #333;
+	font-size: 1.2rem;
+	margin-bottom: 20px;
+}
+
+.stats-table {
+	overflow-x: auto;
+}
+
+.stats-table table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.9rem;
+}
+
+.stats-table th, .stats-table td {
+	padding: 12px 15px;
+	text-align: left;
+	border-bottom: 1px solid #eee;
+}
+
+.stats-table th {
+	background-color: #f8f9fa;
+	font-weight: 600;
+	color: #333;
+}
+
+.stats-table tr:hover {
+	background-color: #f8f9fa;
+}
+
+.stats-table td {
+	color: #666;
+}
+
 /* 图表容器 */
 .statistics-charts {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+	grid-template-columns: 1fr;
 	gap: 20px;
 	margin-top: 20px;
 }
@@ -510,83 +633,6 @@ const generateReport = async () => {
 	color: #333;
 	font-size: 1.1rem;
 	margin-bottom: 20px;
-}
-
-/* 活跃度网格 */
-.activity-grid {
-	display: grid;
-	grid-template-columns: repeat(53, 1fr);
-	grid-template-rows: repeat(7, 1fr);
-	gap: 2px;
-	height: 120px;
-	background: #f5f5f5;
-	padding: 10px;
-	border-radius: 4px;
-	margin-bottom: 15px;
-}
-
-.activity-day {
-	border-radius: 2px;
-	transition: transform 0.2s;
-}
-
-.activity-day:hover {
-	transform: scale(1.5);
-	z-index: 10;
-}
-
-.activity-day.high {
-	background-color: #1989fa;
-}
-
-.activity-day.medium {
-	background-color: #67c23a;
-}
-
-.activity-day.low {
-	background-color: #e6a23c;
-}
-
-.activity-day.none {
-	background-color: #ebedf0;
-}
-
-/* 活跃度图例 */
-.activity-legend {
-	display: flex;
-	align-items: center;
-	gap: 15px;
-	justify-content: center;
-	font-size: 0.8rem;
-	color: #666;
-}
-
-.legend-item {
-	display: flex;
-	align-items: center;
-	gap: 5px;
-}
-
-.legend-color {
-	width: 12px;
-	height: 12px;
-	border-radius: 2px;
-}
-
-.legend-color.high {
-	background-color: #1989fa;
-}
-
-.legend-color.medium {
-	background-color: #67c23a;
-}
-
-.legend-color.low {
-	background-color: #e6a23c;
-}
-
-.legend-color.none {
-	background-color: #ebedf0;
 }
 
 /* 趋势图表 */

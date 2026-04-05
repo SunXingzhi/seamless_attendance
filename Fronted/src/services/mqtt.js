@@ -77,6 +77,34 @@ const mqttService = {
 			console.error('解除人员配对失败:', error)
 			throw error
 		}
+	},
+
+	// 恢复设备初始设置 - fullreset
+	async fullResetDevice(deviceName) {
+		try {
+			console.log('发送fullreset命令到设备:', deviceName)
+			const response = await api.post('/mqtt/fullreset', {
+				device_name: deviceName
+			})
+			return response
+		} catch (error) {
+			console.error('fullreset失败:', error)
+			throw error
+		}
+	},
+
+	// 重置设备 - reset
+	async resetDevice(deviceName) {
+		try {
+			console.log('发送reset命令到设备:', deviceName)
+			const response = await api.post('/mqtt/reset', {
+				device_name: deviceName
+			})
+			return response
+		} catch (error) {
+			console.error('reset失败:', error)
+			throw error
+		}
 	}
 }
 

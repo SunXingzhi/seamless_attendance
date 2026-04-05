@@ -53,6 +53,9 @@
 					<button @click="editStudio(studio)" class="action-btn">
 						编辑工作室
 					</button>
+					<button @click="deleteStudio(studio)" class="action-btn delete-btn">
+						删除工作室
+					</button>
 				</div>
 
 				<!-- 二级菜单：考勤信息 -->
@@ -134,6 +137,18 @@ const showAttendanceInfo = async (studio) => {
 
 const editStudio = (studio) => {
 	router.push(`/studios/edit/${studio.id}`)
+}
+
+const deleteStudio = async (studio) => {
+	if (confirm(`确定要删除工作室 "${studio.name}" 吗？此操作不可撤销。`)) {
+		try {
+			await studioStore.deleteStudio(studio.id)
+			alert('工作室删除成功')
+			// 不需要重新获取列表，store已经更新
+		} catch (error) {
+			alert('删除工作室失败: ' + error.message)
+		}
+	}
 }
 </script>
 
@@ -297,6 +312,13 @@ const editStudio = (studio) => {
 
 .action-btn:hover {
 	background: #66b1ff;
+}
+
+.action-btn.delete-btn {
+	background: #f56c6c;
+}
+.action-btn.delete-btn:hover {
+	background: #f78989;
 }
 
 .studio-attendance {

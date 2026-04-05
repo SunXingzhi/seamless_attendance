@@ -2,7 +2,7 @@ package tech.xuexinglab.seamless_attendance.service.implement;
 
 import org.springframework.stereotype.Service;
 import tech.xuexinglab.seamless_attendance.service.interfaces.userService;
-import tech.xuexinglab.seamless_attendance.DTO.ResponseDTO;
+
 import tech.xuexinglab.seamless_attendance.DTO.userDTO;
 import tech.xuexinglab.seamless_attendance.entity.user;
 import tech.xuexinglab.seamless_attendance.mapper.userMapper;
@@ -76,7 +76,7 @@ public class userServiceImplement implements userService {
 				user_info.getContact_value(), 
 				user_info.getUser_number(),
 				user_info.getRole(), 
-				"", // job_title
+				user_info.getWork_task() != null ? user_info.getWork_task() : "", // job_title
 				workContent, // work_content
 				user_info.getStudio_id(), // studio_id
 				"", // avatar

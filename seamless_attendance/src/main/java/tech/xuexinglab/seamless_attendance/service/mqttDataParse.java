@@ -1,4 +1,4 @@
-package tech.xuexinglab.seamless_attendance.service.implement;
+package tech.xuexinglab.seamless_attendance.service;
 
 import com.alibaba.fastjson.JSON;
 import org.slf4j.Logger;
@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import tech.xuexinglab.seamless_attendance.service.interfaces.MqttMessageService;
+// import tech.xuexinglab.seamless_attendance.service.interfaces.MqttMessageService;    已经废弃
 import tech.xuexinglab.seamless_attendance.mapper.LOTMapper;
 import lombok.AllArgsConstructor;
 
@@ -24,7 +24,7 @@ import java.util.List;
  * 说明：此类被标注为 @Service，Spring 会自动注册为一个 Bean
  */
 @Service
-public class mqttDataParse implements MqttMessageService{
+public class mqttDataParse {
 	// 数据库操作映射器
 	@Autowired
 	private LOTMapper lotMapper;
@@ -73,7 +73,6 @@ public class mqttDataParse implements MqttMessageService{
 	 * @param topic 消息主题
 	 * @param payload 消息内容
 	 */
-	@Override
 	public void personnel_status_analysis(String topic, String payload){
 		logger.info("MQTT message received. topic='{}' payload='{}'", topic, payload);
 

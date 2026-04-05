@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import tech.xuexinglab.seamless_attendance.service.MqttDatabaseService;
 import tech.xuexinglab.seamless_attendance.service.interfaces.studioService;
 import tech.xuexinglab.seamless_attendance.entity.studio;
-import tech.xuexinglab.seamless_attendance.entity.device;
+
 import tech.xuexinglab.seamless_attendance.entity.user;
 import tech.xuexinglab.seamless_attendance.DTO.ResponseDTO;
 import tech.xuexinglab.seamless_attendance.DTO.studioDTO;
@@ -150,7 +150,7 @@ public class studioController {
          * @param id 工作室ID
          * @return 删除结果
          */
-        @DeleteMapping("/studio/info/{id}")
+        @DeleteMapping("/{id}")
         public ResponseDTO<String> deleteStudio(@PathVariable Integer id) {
                 // 调用服务层删除工作室
                 int result = studioService.deleteStudio(id);

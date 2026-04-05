@@ -34,6 +34,7 @@ public class studioServiceImplement implements studioService {
                 return studioMapper.getStudiosByAdminId(admin_id);
         }
 
+        // 创建工作室
         @Override
         public studio createStudio(studioDTO studioDTO) {
                 studio studio = new studio();
@@ -71,7 +72,7 @@ public class studioServiceImplement implements studioService {
                 int maxMemberCount = 0;
                 List<Integer> userIds = new ArrayList<>();
                 
-                // 解析人员列表（学号）
+                // 解析人员列表（学号），排除管理员
                 String personnelNumbers = studioDTO.getPersonnels();
                 if (personnelNumbers != null && !personnelNumbers.isEmpty()) {
                         String[] numbers = personnelNumbers.split(",");
@@ -80,13 +81,22 @@ public class studioServiceImplement implements studioService {
                                         // 通过学号查询用户
                                         user userInfo = userMapper.getUserInfoByUserNumber(number.trim());
                                         if (userInfo != null) {
-                                                userIds.add(userInfo.getId());
+                                                // 检查是否为管理员，避免重复添加
+                                                if (!userInfo.getId().equals(adminId)) {
+                                                        userIds.add(userInfo.getId());
+                                                }
                                         }
                                 }
                         }
-                        totalMemberCount = userIds.size();
-                        maxMemberCount = totalMemberCount; // 最大成员数等于实际选择的人数
                 }
+                
+                // 确保管理员被包含在成员列表中（如果尚未存在）
+                if (adminId != null && adminId != 1 && !userIds.contains(adminId)) {
+                        userIds.add(adminId);
+                }
+                
+                totalMemberCount = userIds.size();
+                maxMemberCount = totalMemberCount; // 最大成员数等于实际选择的人数
                 
                 // 将用户ID列表转换为逗号分隔的字符串
                 StringBuilder userIdStr = new StringBuilder();
@@ -149,7 +159,7 @@ public class studioServiceImplement implements studioService {
                 int maxMemberCount = 0;
                 List<Integer> userIds = new ArrayList<>();
                 
-                // 解析人员列表（学号）
+                // 解析人员列表（学号），排除管理员
                 String personnelNumbers = studioDTO.getPersonnels();
                 if (personnelNumbers != null && !personnelNumbers.isEmpty()) {
                         String[] numbers = personnelNumbers.split(",");
@@ -158,13 +168,22 @@ public class studioServiceImplement implements studioService {
                                         // 通过学号查询用户
                                         user userInfo = userMapper.getUserInfoByUserNumber(number.trim());
                                         if (userInfo != null) {
-                                                userIds.add(userInfo.getId());
+                                                // 检查是否为管理员，避免重复添加
+                                                if (!userInfo.getId().equals(adminId)) {
+                                                        userIds.add(userInfo.getId());
+                                                }
                                         }
                                 }
                         }
-                        totalMemberCount = userIds.size();
-                        maxMemberCount = totalMemberCount; // 最大成员数等于实际选择的人数
                 }
+                
+                // 确保管理员被包含在成员列表中（如果尚未存在）
+                if (adminId != null && adminId != 1 && !userIds.contains(adminId)) {
+                        userIds.add(adminId);
+                }
+                
+                totalMemberCount = userIds.size();
+                maxMemberCount = totalMemberCount; // 最大成员数等于实际选择的人数
                 
                 // 将用户ID列表转换为逗号分隔的字符串
                 StringBuilder userIdStr = new StringBuilder();

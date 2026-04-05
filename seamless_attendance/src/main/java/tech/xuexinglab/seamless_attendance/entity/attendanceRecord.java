@@ -14,7 +14,7 @@ public class attendanceRecord {
         String check_in_time; // 打卡时间，格式：HH:mm:ss
         String check_out_time; // 下班时间，格式：HH:mm:ss
         Double work_hours; // 工作小时数
-        String status; // 状态：active(出勤), absent(缺勤), excused(请假), holiday(假期)
+        String status; // 状态：active(在勤), late(迟到), leave(离开), absent(缺勤), holiday(假期), excused(请假)
         String create_time;
         String update_time;
 }

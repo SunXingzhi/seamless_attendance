@@ -14,16 +14,17 @@ import tech.xuexinglab.seamless_attendance.entity.user;
 import tech.xuexinglab.seamless_attendance.mapper.attendanceMapper;
 import tech.xuexinglab.seamless_attendance.mapper.deviceMapper;
 import tech.xuexinglab.seamless_attendance.mapper.userMapper;
+import tech.xuexinglab.seamless_attendance.service.MqttMessageSender;
+import tech.xuexinglab.seamless_attendance.configuration.MqttProperties;
 import tech.xuexinglab.seamless_attendance.controller.WebSocketController;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
+import com.alibaba.fastjson.JSONObject;
 
 @Service
 public class MqttMessageHandlerService {
@@ -40,6 +41,12 @@ public class MqttMessageHandlerService {
 
         @Autowired
         private WebSocketController webSocketController;
+
+        @Autowired
+        private MqttMessageSender messageSender;
+
+        @Autowired
+        private MqttProperties mqttProperties;
 
         // 日期时间格式器
         private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -127,52 +134,164 @@ public class MqttMessageHandlerService {
                 }
         }
 
-        // 处理人员状态
+        // 处理人员状态, 根据MQTT消息中的P1、P2、P3字段更新对应人员的状态, 并发送人员信息到硬件平台
         private void handlePersonnelStatus(List<String> personnelNumbers, MqttStatusMessage message,
                         String currentDate, String currentDateTime,
                         String currentTimeStr, LocalDateTime currentTime) {
-                // 处理P1对应第一个人员
-                if (personnelNumbers.size() > 0) {
-                        String userNumber = personnelNumbers.get(0);
-                        int status = message.getP1();
-                        // 这里应该确保传入的是学号, 而不是人员姓名
-                        updateUserStatus(userNumber, status, currentDate, currentDateTime, currentTimeStr, currentTime);
 
+                String result_status = "absent"; // 默认状态
+
+                if (personnelNumbers == null || personnelNumbers.isEmpty()) {
+                        logger.warn("No personnel numbers provided for device, skipping status update");
+                        return;
                 }
 
-                // 处理P2对应第二个人员
-                if (personnelNumbers.size() > 1) {
-                        String userNumber = personnelNumbers.get(1);
-                        int status = message.getP2();
-                        updateUserStatus(userNumber, status, currentDate, currentDateTime, currentTimeStr, currentTime);
+                // 发送的人员数据不应该比设备绑定的人员数据更多, 但可以更少(如果某些人员状态没有更新)
+                if (personnelNumbers.size() > 3) {
+                        logger.error("More than 3 personnel assigned to device, only processing the first 3");
+                        return;
                 }
 
-                // 处理P3对应第三个人员
-                if (personnelNumbers.size() > 2) {
-                        String userNumber = personnelNumbers.get(2);
-                        int status = message.getP3();
-                        updateUserStatus(userNumber, status, currentDate, currentDateTime, currentTimeStr, currentTime);
+                if (personnelNumbers.size() < 3) {
+                        logger.warn("Less than 3 personnel assigned to device, some status may not be updated");
+                }
+
+                try{
+                        // 获取设备的原始设备名称(用于发送MQTT消息时的设备标识, 例如device_name:A1, origin_device_name:A)
+                        String originDeviceId = message.id.replaceAll("[_\\d]+$", ""); // 移除末尾的数字和下划线
+                        // 处理P1对应第一个人员
+                        if (personnelNumbers.size() > 0) {
+                                String userNumber = personnelNumbers.get(0);
+                                int status = message.getP1();
+                                // 判断人员状态, 只有状态更新时才进行后续处理, 避免重复更新和发送消息
+                                if (!hasStatusChanged(userNumber, String.valueOf(status))) {
+                                        logger.info("Status for user {} has not changed, skipping update", userNumber);
+                                        return;
+                                }
+                                // 这里应该确保传入的是学号, 而不是人员姓名
+                                result_status = updateUserStatus(userNumber, status, currentDate, currentDateTime,
+                                                currentTimeStr, currentTime);
+                                
+                                // 发送WebSocket消息到前端
+                                sendStatusUpdateToFrontend(userNumber, result_status, currentDateTime);
+                                // 发送人员信息到硬件平台
+                                sendStatusToHardware(originDeviceId, "1", result_status);
+                        }
+
+                        // 处理P2对应第二个人员
+                        if (personnelNumbers.size() > 1) {
+                                String userNumber = personnelNumbers.get(1);
+                                int status = message.getP2();
+                                // 判断人员状态, 只有状态更新时才进行后续处理, 避免重复更新和发送消息
+                                if (!hasStatusChanged(userNumber, String.valueOf(status))) {
+                                        logger.info("Status for user {} has not changed, skipping update", userNumber);
+                                        return;
+                                }
+                                result_status = updateUserStatus(userNumber, status, currentDate, currentDateTime,
+                                                currentTimeStr, currentTime);
+                                // 发送WebSocket消息到前端
+                                sendStatusUpdateToFrontend(userNumber, result_status, currentDateTime);
+                                // 发送人员信息到硬件平台
+                                sendStatusToHardware(originDeviceId, "2", result_status);
+                        }
+
+                        // 处理P3对应第三个人员
+                        if (personnelNumbers.size() > 2) {
+                                String userNumber = personnelNumbers.get(2);
+                                int status = message.getP3();
+                                // 判断人员状态, 只有状态更新时才进行后续处理, 避免重复更新和发送消息
+                                if (!hasStatusChanged(userNumber, String.valueOf(status))) {
+                                        logger.info("Status for user {} has not changed, skipping update", userNumber);
+                                        return;
+                                }
+                                result_status = updateUserStatus(userNumber, status, currentDate, currentDateTime,
+                                                currentTimeStr, currentTime);
+                                // 发送WebSocket消息到前端
+                                sendStatusUpdateToFrontend(userNumber, result_status, currentDateTime);
+                                // 发送人员信息到硬件平台
+                                sendStatusToHardware(originDeviceId, "3", result_status);        
+                        }
+                } 
+                catch (Exception e) {
+                        logger.error("Error handling personnel status", e);
+                }
+
+        }
+        // 判断人员状态是否发生改变
+        private boolean hasStatusChanged(String userNumber, String newStatus) {
+                try {
+                        userStatus currentStatus = attendanceMapper.getUserStatusByUserNumber(userNumber);
+                        if (currentStatus == null) {
+                                // 如果没有现有状态，认为状态发生了改变
+                                return true;
+                        }
+                        return !newStatus.equals(currentStatus.getCurrent_status());
+                } catch (Exception e) {
+                        logger.error("Error checking status change for user: {}", userNumber, e);
+                        // 在发生错误时，默认认为状态发生了改变，以确保后续处理能够进行
+                        return true;
                 }
         }
 
+        // 发送人员状态到硬件平台, 这里不
+        private void sendStatusToHardware(String originDeviceId, String index, String result_status) {
+                try {
+                        // 将 result_status 映射为 DATA 值
+                        int data = "active".equals(result_status) ? 1 : 0;
+                        switch (result_status.toLowerCase()) {
+                                case "late":
+                                        data    = 1;
+                                        break;
+                                case "absent":
+                                        data    = 2;
+                                        break;
+                                case "active":
+                                        data    = 3;
+                                        break;
+                                
+                                case "excused":
+                                        data    = 4;
+                                        break;
+                                case "holiday":
+                                        data    = 5;
+                                        break;
+                                case "leave":
+                                        data    = 6;
+                                        break;
+                                default:
+                                        data    = 3;
+                                        break;
+                        }
+                        // 构建JSON消息
+                        String jsonMessage = String.format(
+                                        "{\"ID\":\"%s\",\"INDEX\":%s,\"TYPE\":\"status\",\"DATA\":%d}",
+                                        originDeviceId, index, data);
+
+                        // 发送到 show 主题
+                        messageSender.sendMessage(mqttProperties.showTopic, jsonMessage);
+                        logger.info("Sent status to hardware: {}", jsonMessage);
+                } catch (Exception e) {
+                        logger.error("Error sending status to hardware", e);
+                }
+        }
+        
         // 更新用户状态
-        private void updateUserStatus(String userNumber, int status,
+        private String updateUserStatus(String userNumber, int status,
                         String currentDate, String currentDateTime,
                         String currentTimeStr, LocalDateTime currentTime) {
-                
 
                 String result_status;
 
-                result_status   = status == 1 ? "active" : "absent";
+                result_status = status == 1 ? "active" : "absent";
                 try {
                         // 检查用户是否存在
                         user userInfo = userMapper.getUserInfoByUserNumber(userNumber);
-                        
+
                         if (userInfo == null) {
                                 userInfo = userMapper.getUserInfoByName(userNumber);
                                 if (userInfo == null) {
                                         logger.error("User number not found: {}", userNumber);
-                                        return;
+                                        return null;
                                 } else {
                                         userNumber = userInfo.getUser_number();
                                         logger.info("Use username for get user information.");
@@ -183,14 +302,14 @@ public class MqttMessageHandlerService {
                         boolean isHoliday = isHoliday(currentDate);
                         if (isHoliday) {
                                 logger.info("Today is a holiday, skipping status update for user: {}", userNumber);
-                                return;
+                                return "holiday";
                         }
 
                         // 检查是否是请假
                         boolean isOnLeave = isOnLeave(userNumber, currentDate);
                         if (isOnLeave) {
                                 logger.info("User is on leave, skipping status update for user: {}", userNumber);
-                                return;
+                                return "excused";
                         }
 
                         // 获取用户当前状态
@@ -291,7 +410,7 @@ public class MqttMessageHandlerService {
                                                                 currentStatus.getCheck_in_time(),
                                                                 currentTimeStr,
                                                                 currentStatus.getToday_work_hours(),
-                                                                "active");
+                                                                "leave");
                                         }
                                         // 保持离线状态，不做操作
                                 }
@@ -318,11 +437,12 @@ public class MqttMessageHandlerService {
                                                 userInfo.getDevice_id());
                         }
 
-                        // 发送WebSocket消息到前端
-                        sendStatusUpdateToFrontend(userNumber, result_status, currentDateTime);
-
+                        // // 发送WebSocket消息到前端
+                        // sendStatusUpdateToFrontend(userNumber, result_status, currentDateTime);
+                        return result_status;
                 } catch (Exception e) {
                         logger.error("Error updating user status: {}", userNumber, e);
+                        return null;
                 }
         }
 
@@ -401,43 +521,12 @@ public class MqttMessageHandlerService {
         // 解析MQTT状态消息
         private MqttStatusMessage parseMqttStatusMessage(String payload) {
                 try {
-                        // 简单的JSON解析，实际项目中可以使用JSON库
+                        JSONObject jsonObject = JSONObject.parseObject(payload);
                         MqttStatusMessage message = new MqttStatusMessage();
-
-                        // 提取ID
-                        int idStart = payload.indexOf("\"ID\":\"") + 5;
-                        int idEnd = payload.indexOf("\"", idStart);
-                        if (idStart > 4 && idEnd > idStart) {
-                                message.setId(payload.substring(idStart, idEnd));
-                        }
-
-                        // 提取P1
-                        int p1Start = payload.indexOf("\"P1\":") + 5;
-                        int p1End = payload.indexOf(",", p1Start);
-                        if (p1End == -1)
-                                p1End = payload.indexOf("}", p1Start);
-                        if (p1Start > 4 && p1End > p1Start) {
-                                message.setP1(Integer.parseInt(payload.substring(p1Start, p1End).trim()));
-                        }
-
-                        // 提取P2
-                        int p2Start = payload.indexOf("\"P2\":") + 5;
-                        int p2End = payload.indexOf(",", p2Start);
-                        if (p2End == -1)
-                                p2End = payload.indexOf("}", p2Start);
-                        if (p2Start > 4 && p2End > p2Start) {
-                                message.setP2(Integer.parseInt(payload.substring(p2Start, p2End).trim()));
-                        }
-
-                        // 提取P3
-                        int p3Start = payload.indexOf("\"P3\":") + 5;
-                        int p3End = payload.indexOf(",", p3Start);
-                        if (p3End == -1)
-                                p3End = payload.indexOf("}", p3Start);
-                        if (p3Start > 4 && p3End > p3Start) {
-                                message.setP3(Integer.parseInt(payload.substring(p3Start, p3End).trim()));
-                        }
-
+                        message.setId(jsonObject.getString("ID"));
+                        message.setP1(jsonObject.getInteger("P1"));
+                        message.setP2(jsonObject.getInteger("P2"));
+                        message.setP3(jsonObject.getInteger("P3"));
                         return message;
                 } catch (Exception e) {
                         logger.error("Error parsing MQTT status message", e);

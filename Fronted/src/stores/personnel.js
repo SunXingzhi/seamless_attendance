@@ -102,8 +102,9 @@ export const usePersonnelStore = defineStore('personnel', {
 				const backendData = this.transformToBackendFormat(person)
 				const response = await personnelService.addPersonnel(backendData)
 				console.log('添加人员响应:', response)
-				// 由于 api 拦截器已经返回了 response.data，所以直接使用 response
-				const newPerson = this.transformPersonnelData(response)
+				// 响应结构可能是 { code, message, data: user }
+				const responseData = response.data || response
+				const newPerson = this.transformPersonnelData(responseData)
 				// 确保新人员对象包含所有必要字段
 				if (newPerson.userName) {
 					this.personnelList.push(newPerson)
@@ -112,7 +113,7 @@ export const usePersonnelStore = defineStore('personnel', {
 					// 如果后端返回的数据不完整，使用前端提交的数据
 					const fallbackPerson = {
 						...person,
-						userId: response.id || response.user_id || Date.now() // 使用后端返回的 ID 或生成临时 ID
+						userId: responseData.id || responseData.user_id || Date.now() // 使用后端返回的 ID 或生成临时 ID
 					}
 					this.personnelList.push(fallbackPerson)
 				}
@@ -130,13 +131,29 @@ export const usePersonnelStore = defineStore('personnel', {
 				const index = this.personnelList.findIndex(person => person.userId === id)
 				if (index !== -1) {
 					const currentPerson = this.personnelList[index]
-					// 由于 api 拦截器已经返回了 response.data，所以直接使用 response
-					const updatedPerson = this.transformPersonnelData(response)
-					this.personnelList[index] = {
+					// 只更新前端提交的字段，而不是完全替换
+					const updatedFields = {
+						userName: updates.userName,
+						userNumber: updates.userNumber,
+						contactType: updates.contactType,
+						contactNumber: updates.contactNumber,
+						role: updates.role,
+						workTask: updates.workTask,
+						pairingStatus: updates.pairingStatus
+					}
+					// 如果后端返回了更新的数据，使用它来补充
+					if (response && typeof response === 'object') {
+						// 响应结构可能是 { code, message, data: user }
+						const responseData = response.data || response
+						const backendUpdated = this.transformPersonnelData(responseData)
+						Object.assign(updatedFields, backendUpdated)
+					}
+					const newPerson = {
 						...currentPerson,
-						...updatedPerson,
+						...updatedFields,
 						userId: id
 					}
+					this.personnelList.splice(index, 1, newPerson)
 				}
 			} catch (error) {
 				console.error('更新人员失败:', error)
@@ -187,7 +204,7 @@ export const usePersonnelStore = defineStore('personnel', {
 			contact_type: data.contactType,
 			contact_value: data.contactNumber,
 			role: data.role,
-			job_title: data.workTask,
+			work_task: data.workTask,  // 修改：使用work_task匹配后端DTO
 			work_content: data.workContent,
 			studio_id: data.studio_id || data.studioId || '',
 			avatar: data.avatar,

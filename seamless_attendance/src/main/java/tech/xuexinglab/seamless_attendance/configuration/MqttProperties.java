@@ -12,6 +12,7 @@ public class MqttProperties {
         public String commandTopic      = "ESP32C3/recognition";
         public String statusTopic       = "ESP32C3/status";
         public String feedbackTopic     = "ESP32C3/feedback";
+        public String showTopic         = "ESP32C3/show";
 	private String username;
 	private String password;
 	public int qos = 0;

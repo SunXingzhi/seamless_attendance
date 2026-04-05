@@ -15,6 +15,8 @@ import tech.xuexinglab.seamless_attendance.entity.device;
 import tech.xuexinglab.seamless_attendance.service.interfaces.deviceService;
 import tech.xuexinglab.seamless_attendance.service.GetFontsBitmapService;
 import tech.xuexinglab.seamless_attendance.service.DeviceBitmapService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.List;
 
 @RestController
@@ -29,6 +31,8 @@ public class deviceController {
 
 	@Autowired
 	private DeviceBitmapService deviceBitmapService;
+
+	private static final Logger logger = LoggerFactory.getLogger(deviceController.class);
 
 	// 获取设备列表
 	@GetMapping("/devices/all")
@@ -52,6 +56,26 @@ public class deviceController {
 	public ResponseDTO<String> addDevice(@RequestBody deviceDTO deviceDTO) {
 		int result = deviceService.addDevice(deviceDTO);
 		if (result > 0) {
+			// 如果绑定了人员，为每个人员生成字模并发送到 MQTT（异步执行，避免阻塞响应）
+			if (deviceDTO.getPersonnels() != null && !deviceDTO.getPersonnels().isEmpty()) {
+				String[] personnels = deviceDTO.getPersonnels().split(",");
+				String originDeviceName = deviceDTO.getOriginDeviceName();
+				int deviceIndex = deviceDTO.getDeviceIndex();
+				// 异步发送字模，不阻塞主响应
+				new Thread(() -> {
+					try {
+						for (String personnelName : personnels) {
+							if (personnelName != null && !personnelName.trim().isEmpty()) {
+								deviceBitmapService.processDevicePersonnelBitmap(originDeviceName,
+										personnelName.trim(), deviceIndex);
+							}
+						}
+						logger.info("设备字模异步发送完成，设备名称: {}", deviceDTO.getDevice_name());
+					} catch (Exception e) {
+						logger.error("设备字模异步发送失败，设备名称: {}", deviceDTO.getDevice_name(), e);
+					}
+				}).start();
+			}
 			return ResponseDTO.success("设备添加成功");
 		} else {
 			return ResponseDTO.error("设备添加失败");
@@ -66,7 +90,7 @@ public class deviceController {
 		// 获取源设备名称(eg:device_name:A1, origin_device_name:A)
 		device.setOriginDeviceName(deviceDTO.getOriginDeviceName());
 		device.setDevice_name(deviceDTO.getDevice_name());
-		device.setDevice_id(deviceDTO.getDevice_id());
+		device.setDevice_id(deviceDTO.getDevice_name()); // 统一使用device_name作为设备标识符
 		device.setStudio_codes(deviceDTO.getStudio_codes());
 		device.setStatus("absent");
 
@@ -74,21 +98,29 @@ public class deviceController {
 			device.setPersonnels(deviceDTO.getPersonnels());
 		}
 
-		// 获取该设备中所有人员的人名
-		String[] personnels = deviceDTO.getPersonnels().split(",");
-
-		// 获取原始设备名称（如 "A"）
-		String originDeviceName = deviceDTO.getOriginDeviceName();
-
-		// 为每个人员生成字模并发送到 MQTT
-		for (String personnelName : personnels) {
-			if (personnelName != null && !personnelName.trim().isEmpty()) {
-				deviceBitmapService.processDevicePersonnelBitmap(originDeviceName,
-						personnelName.trim(), deviceDTO.getDeviceIndex());
-			}
-		}
+		// 先更新设备
 		int result = deviceService.updateDevice(device);
 		if (result > 0) {
+			// 如果更新成功且绑定了人员，异步发送字模
+			if (deviceDTO.getPersonnels() != null && !deviceDTO.getPersonnels().isEmpty()) {
+				String[] personnels = deviceDTO.getPersonnels().split(",");
+				String originDeviceName = deviceDTO.getOriginDeviceName();
+				int deviceIndex = deviceDTO.getDeviceIndex();
+				// 异步发送字模，不阻塞响应
+				new Thread(() -> {
+					try {
+						for (String personnelName : personnels) {
+							if (personnelName != null && !personnelName.trim().isEmpty()) {
+								deviceBitmapService.processDevicePersonnelBitmap(originDeviceName,
+										personnelName.trim(), deviceIndex);
+							}
+						}
+						logger.info("设备字模异步发送完成，设备名称: {}", deviceDTO.getDevice_name());
+					} catch (Exception e) {
+						logger.error("设备字模异步发送失败，设备名称: {}", deviceDTO.getDevice_name(), e);
+					}
+				}).start();
+			}
 			return ResponseDTO.success("设备更新成功");
 		} else {
 			return ResponseDTO.error("设备更新失败");
@@ -138,4 +170,6 @@ public class deviceController {
 			return ResponseDTO.error("设备状态刷新失败");
 		}
 	}
+
+        
 }

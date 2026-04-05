@@ -71,6 +71,10 @@ public interface userMapper {
 	@Update("UPDATE user, (SELECT @i:=0) AS temp SET id = @i:=@i+1 ORDER BY id")
 	public int renumberUserIds();
         
+        // 更新用户设备ID
+	@Update("update user set device_id = #{device_id}, update_time = NOW() where user_number = #{user_number}")
+	public int updateUserDeviceId(@Param("user_number") String user_number, @Param("device_id") Integer device_id);
+
         // 重置用户表自增计数器
         @Update("ALTER TABLE user AUTO_INCREMENT = (SELECT IFNULL(MAX(id), 0) + 1 FROM user);")
         public int resetUserAutoIncrement();

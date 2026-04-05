@@ -1,4 +1,109 @@
--- 创建用户每日统计表
+-- =====================================================
+-- 智能迁移脚本 - 兼容所有MySQL版本
+-- =====================================================
+--
+-- 此脚本使用存储过程来安全地添加/删除列
+-- 避免了IF NOT EXISTS语法兼容性问题
+-- =====================================================
+
+DELIMITER //
+
+-- 存储过程：安全添加列
+CREATE PROCEDURE AddColumnIfNotExists(
+    IN tableName VARCHAR(255),
+    IN columnName VARCHAR(255),
+    IN columnDefinition TEXT
+)
+BEGIN
+    DECLARE columnCount INT DEFAULT 0;
+
+    -- 检查列是否存在
+    SELECT COUNT(*) INTO columnCount
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = tableName
+    AND COLUMN_NAME = columnName;
+
+    -- 如果列不存在，则添加
+    IF columnCount = 0 THEN
+        SET @sql = CONCAT('ALTER TABLE ', tableName, ' ADD COLUMN ', columnName, ' ', columnDefinition);
+        PREPARE stmt FROM @sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END //
+
+-- 存储过程：安全删除列
+CREATE PROCEDURE DropColumnIfExists(
+    IN tableName VARCHAR(255),
+    IN columnName VARCHAR(255)
+)
+BEGIN
+    DECLARE columnCount INT DEFAULT 0;
+
+    -- 检查列是否存在
+    SELECT COUNT(*) INTO columnCount
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = tableName
+    AND COLUMN_NAME = columnName;
+
+    -- 如果列存在，则删除
+    IF columnCount > 0 THEN
+        SET @sql = CONCAT('ALTER TABLE ', tableName, ' DROP COLUMN ', columnName);
+        PREPARE stmt FROM @sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END //
+
+DELIMITER ;
+
+-- 执行安全的列操作
+CALL AddColumnIfNotExists('device', 'device_id', 'VARCHAR(50) COMMENT \'设备ID\'');
+CALL AddColumnIfNotExists('device', 'personnels', 'TEXT COMMENT \'人员配对信息JSON格式\'');
+
+CALL AddColumnIfNotExists('studio', 'description', 'TEXT COMMENT \'工作室描述\'');
+CALL AddColumnIfNotExists('studio', 'devices', 'TEXT COMMENT \'设备列表JSON格式\'');
+CALL AddColumnIfNotExists('studio', 'admin_name', 'VARCHAR(50) COMMENT \'工作室管理员姓名\'');
+CALL AddColumnIfNotExists('studio', 'admin_user_number', 'VARCHAR(50) COMMENT \'工作室管理员工号\'');
+
+CALL DropColumnIfExists('device', 'device_type');
+CALL DropColumnIfExists('device', 'studio_id');
+CALL DropColumnIfExists('device', 'location');
+CALL DropColumnIfExists('device', 'ip_address');
+
+CALL DropColumnIfExists('studio', 'location');
+
+CALL AddColumnIfNotExists('user', 'password', 'VARCHAR(100) COMMENT \'登录密码\'');
+CALL AddColumnIfNotExists('user', 'studio_admin_id', 'INT COMMENT \'如果是工作室管理员，记录所属工作室ID\'');
+
+-- user_status表列操作
+CALL AddColumnIfNotExists('user_status', 'last_active_time', 'VARCHAR(20) COMMENT \'最后在线时间，格式：yyyy-MM-dd HH:mm:ss\'');
+CALL AddColumnIfNotExists('user_status', 'last_absent_time', 'VARCHAR(20) COMMENT \'最后离线时间，格式：yyyy-MM-dd HH:mm:ss\'');
+CALL AddColumnIfNotExists('user_status', 'today_work_hours', 'DOUBLE COMMENT \'今日工作小时数\'');
+CALL AddColumnIfNotExists('user_status', 'check_in_time', 'VARCHAR(10) COMMENT \'今日打卡时间，格式：HH:mm:ss\'');
+CALL AddColumnIfNotExists('user_status', 'check_out_time', 'VARCHAR(10) COMMENT \'今日下班时间，格式：HH:mm:ss\'');
+
+-- 修改现有列
+ALTER TABLE studio MODIFY COLUMN studio_code VARCHAR(50) COMMENT '工作室代码';
+
+-- 创建统计表（如果不存在）
+CREATE TABLE IF NOT EXISTS user_status (
+    id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+    user_number VARCHAR(50) NOT NULL COMMENT '用户工号',
+    current_status VARCHAR(20) COMMENT '当前状态：active(在线), absent(离线)',
+    last_active_time VARCHAR(20) COMMENT '最后在线时间，格式：yyyy-MM-dd HH:mm:ss',
+    last_absent_time VARCHAR(20) COMMENT '最后离线时间，格式：yyyy-MM-dd HH:mm:ss',
+    today_work_hours DOUBLE COMMENT '今日工作小时数',
+    check_in_time VARCHAR(10) COMMENT '今日打卡时间，格式：HH:mm:ss',
+    check_out_time VARCHAR(10) COMMENT '今日下班时间，格式：HH:mm:ss',
+    create_time DATETIME COMMENT '创建时间',
+    update_time DATETIME COMMENT '更新时间',
+    UNIQUE KEY uk_user_number (user_number)
+) COMMENT '用户状态表';
+
+-- 创建统计表
 CREATE TABLE IF NOT EXISTS user_daily_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     user_number VARCHAR(50) NOT NULL COMMENT '用户工号',
@@ -16,7 +121,6 @@ CREATE TABLE IF NOT EXISTS user_daily_stats (
     INDEX idx_date (date)
 ) COMMENT '用户每日统计表';
 
--- 创建用户周统计表
 CREATE TABLE IF NOT EXISTS user_weekly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     user_number VARCHAR(50) NOT NULL COMMENT '用户工号',
@@ -39,7 +143,6 @@ CREATE TABLE IF NOT EXISTS user_weekly_stats (
     INDEX idx_week_start (week_start)
 ) COMMENT '用户周统计表';
 
--- 创建用户月统计表
 CREATE TABLE IF NOT EXISTS user_monthly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     user_number VARCHAR(50) NOT NULL COMMENT '用户工号',
@@ -63,7 +166,6 @@ CREATE TABLE IF NOT EXISTS user_monthly_stats (
     INDEX idx_year_month (year, month)
 ) COMMENT '用户月统计表';
 
--- 创建用户年统计表
 CREATE TABLE IF NOT EXISTS user_yearly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     user_number VARCHAR(50) NOT NULL COMMENT '用户工号',
@@ -86,7 +188,6 @@ CREATE TABLE IF NOT EXISTS user_yearly_stats (
     INDEX idx_year (year)
 ) COMMENT '用户年统计表';
 
--- 创建工作室每日统计表
 CREATE TABLE IF NOT EXISTS studio_daily_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     studio_code VARCHAR(50) NOT NULL COMMENT '工作室代码',
@@ -106,7 +207,6 @@ CREATE TABLE IF NOT EXISTS studio_daily_stats (
     INDEX idx_date (date)
 ) COMMENT '工作室每日统计表';
 
--- 创建工作室周统计表
 CREATE TABLE IF NOT EXISTS studio_weekly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     studio_code VARCHAR(50) NOT NULL COMMENT '工作室代码',
@@ -126,7 +226,6 @@ CREATE TABLE IF NOT EXISTS studio_weekly_stats (
     INDEX idx_week_start (week_start)
 ) COMMENT '工作室周统计表';
 
--- 创建工作室月统计表
 CREATE TABLE IF NOT EXISTS studio_monthly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     studio_code VARCHAR(50) NOT NULL COMMENT '工作室代码',
@@ -147,7 +246,6 @@ CREATE TABLE IF NOT EXISTS studio_monthly_stats (
     INDEX idx_year_month (year, month)
 ) COMMENT '工作室月统计表';
 
--- 创建工作室年统计表
 CREATE TABLE IF NOT EXISTS studio_yearly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     studio_code VARCHAR(50) NOT NULL COMMENT '工作室代码',
@@ -166,3 +264,7 @@ CREATE TABLE IF NOT EXISTS studio_yearly_stats (
     INDEX idx_studio_code (studio_code),
     INDEX idx_year (year)
 ) COMMENT '工作室年统计表';
+
+-- 清理存储过程
+DROP PROCEDURE IF EXISTS AddColumnIfNotExists;
+DROP PROCEDURE IF EXISTS DropColumnIfExists;

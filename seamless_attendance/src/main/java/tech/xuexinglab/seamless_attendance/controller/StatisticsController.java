@@ -1,154 +1,474 @@
 package tech.xuexinglab.seamless_attendance.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import tech.xuexinglab.seamless_attendance.DTO.ResponseDTO;
-import tech.xuexinglab.seamless_attendance.service.interfaces.userService;
+import tech.xuexinglab.seamless_attendance.entity.*;
+import tech.xuexinglab.seamless_attendance.service.interfaces.StatisticsService;
 
-import java.util.ArrayList;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/seamless_attendance/api/statistics")
 public class StatisticsController {
 
     @Autowired
-    private userService userService;
+    private StatisticsService statisticsService;
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    // ==================== 用户每日统计 ====================
 
     /**
-     * 获取统计数据
+     * 获取用户每日统计数据
      */
-    @GetMapping
-    public ResponseDTO<?> getStatistics(
-            @RequestParam(required = false) String timeRange,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String statisticsType,
-            @RequestParam(required = false) String selectedPerson,
-            @RequestParam(required = false) String statisticsContent) {
-        
-        // 模拟统计数据
-        Map<String, Object> statisticsData = new HashMap<>();
-        statisticsData.put("activeCount", 25);
-        statisticsData.put("lateCount", 3);
-        statisticsData.put("leaveCount", 2);
-        statisticsData.put("absentCount", 1);
-        statisticsData.put("holidayCount", 0);
-        statisticsData.put("excusedCount", 0);
-        statisticsData.put("attendanceRate", 85);
-        
-        return ResponseDTO.success(statisticsData);
-    }
+    @GetMapping("/user/daily/{userNumber}")
+    public ResponseDTO<?> getUserDailyStats(
+            @PathVariable String userNumber,
+            @RequestParam(required = false, defaultValue = "7") int limit) {
 
-    /**
-     * 获取活跃度统计
-     */
-    @GetMapping("/activity")
-    public ResponseDTO<?> getActivityStatistics(
-            @RequestParam(required = false) String timeRange,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
-        
-        // 模拟活跃度数据
-        List<Map<String, Object>> activityData = new ArrayList<>();
-        Random random = new Random();
-        String[] levels = {"high", "medium", "low", "none"};
-        
-        // 生成365天的活跃度数据
-        for (int i = 0; i < 365; i++) {
-            Map<String, Object> dayData = new HashMap<>();
-            dayData.put("date", getDateBefore(i));
-            dayData.put("level", levels[random.nextInt(levels.length)]);
-            activityData.add(dayData);
+        try {
+            List<UserDailyStats> stats = statisticsService.getUserDailyStatsList(userNumber, limit);
+            return ResponseDTO.success(stats);
+        } catch (Exception e) {
+            return ResponseDTO.error("获取用户每日统计数据失败: " + e.getMessage());
         }
-        
-        return ResponseDTO.success(activityData);
     }
 
     /**
-     * 获取趋势分析
+     * 获取用户指定日期的每日统计
      */
-    @GetMapping("/trend")
-    public ResponseDTO<?> getTrendAnalysis(
-            @RequestParam(required = false) String timeRange,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String statisticsContent) {
-        
-        // 模拟趋势数据
-        List<Integer> trendData = new ArrayList<>();
-        Random random = new Random();
-        
-        // 生成12个数据点
-        for (int i = 0; i < 12; i++) {
-            trendData.add(random.nextInt(40) + 60); // 60-100之间的随机数
+    @GetMapping("/user/daily/{userNumber}/{date}")
+    public ResponseDTO<?> getUserDailyStatsByDate(
+            @PathVariable String userNumber,
+            @PathVariable String date) {
+
+        try {
+            UserDailyStats stats = statisticsService.getUserDailyStats(userNumber, date);
+            if (stats != null) {
+                return ResponseDTO.success(stats);
+            } else {
+                return ResponseDTO.error("未找到指定日期的统计数据");
+            }
+        } catch (Exception e) {
+            return ResponseDTO.error("获取用户每日统计数据失败: " + e.getMessage());
         }
-        
-        return ResponseDTO.success(trendData);
+    }
+
+    // ==================== 用户每周统计 ====================
+
+    /**
+     * 获取用户每周统计数据
+     */
+    @GetMapping("/user/weekly/{userNumber}")
+    public ResponseDTO<?> getUserWeeklyStats(
+            @PathVariable String userNumber,
+            @RequestParam(required = false, defaultValue = "4") int limit) {
+
+        try {
+            List<UserWeeklyStats> stats = statisticsService.getUserWeeklyStatsList(userNumber, limit);
+            return ResponseDTO.success(stats);
+        } catch (Exception e) {
+            return ResponseDTO.error("获取用户每周统计数据失败: " + e.getMessage());
+        }
     }
 
     /**
-     * 获取出勤率统计
+     * 获取用户指定周的每周统计
      */
-    @GetMapping("/attendance-rate")
-    public ResponseDTO<?> getAttendanceRate(
-            @RequestParam(required = false) String timeRange,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
-        
-        // 模拟出勤率数据
-        Map<String, Object> attendanceRateData = new HashMap<>();
-        attendanceRateData.put("averageRate", 85);
-        attendanceRateData.put("maxRate", 100);
-        attendanceRateData.put("minRate", 60);
-        
-        return ResponseDTO.success(attendanceRateData);
+    @GetMapping("/user/weekly/{userNumber}/{weekStartDate}")
+    public ResponseDTO<?> getUserWeeklyStatsByWeek(
+            @PathVariable String userNumber,
+            @PathVariable String weekStartDate) {
+
+        try {
+            UserWeeklyStats stats = statisticsService.getUserWeeklyStats(userNumber, weekStartDate);
+            if (stats != null) {
+                return ResponseDTO.success(stats);
+            } else {
+                return ResponseDTO.error("未找到指定周的统计数据");
+            }
+        } catch (Exception e) {
+            return ResponseDTO.error("获取用户每周统计数据失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 用户每月统计 ====================
+
+    /**
+     * 获取用户每月统计数据
+     */
+    @GetMapping("/user/monthly/{userNumber}")
+    public ResponseDTO<?> getUserMonthlyStats(
+            @PathVariable String userNumber,
+            @RequestParam(required = false, defaultValue = "12") int limit) {
+
+        try {
+            List<UserMonthlyStats> stats = statisticsService.getUserMonthlyStatsList(userNumber, limit);
+            return ResponseDTO.success(stats);
+        } catch (Exception e) {
+            return ResponseDTO.error("获取用户每月统计数据失败: " + e.getMessage());
+        }
     }
 
     /**
-     * 获取满勤次数
+     * 获取用户指定月份的每月统计
      */
-    @GetMapping("/full-attendance")
-    public ResponseDTO<?> getFullAttendanceCount(
-            @RequestParam(required = false) String timeRange,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
-        
-        // 模拟满勤次数数据
-        Map<String, Object> fullAttendanceData = new HashMap<>();
-        fullAttendanceData.put("count", 15);
-        
-        return ResponseDTO.success(fullAttendanceData);
+    @GetMapping("/user/monthly/{userNumber}/{year}/{month}")
+    public ResponseDTO<?> getUserMonthlyStatsByMonth(
+            @PathVariable String userNumber,
+            @PathVariable int year,
+            @PathVariable int month) {
+
+        try {
+            UserMonthlyStats stats = statisticsService.getUserMonthlyStats(userNumber, month, year);
+            if (stats != null) {
+                return ResponseDTO.success(stats);
+            } else {
+                return ResponseDTO.error("未找到指定月份的统计数据");
+            }
+        } catch (Exception e) {
+            return ResponseDTO.error("获取用户每月统计数据失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 用户每年统计 ====================
+
+    /**
+     * 获取用户每年统计数据
+     */
+    @GetMapping("/user/yearly/{userNumber}")
+    public ResponseDTO<?> getUserYearlyStats(
+            @PathVariable String userNumber,
+            @RequestParam(required = false, defaultValue = "5") int limit) {
+
+        try {
+            List<UserYearlyStats> stats = statisticsService.getUserYearlyStatsList(userNumber, limit);
+            return ResponseDTO.success(stats);
+        } catch (Exception e) {
+            return ResponseDTO.error("获取用户每年统计数据失败: " + e.getMessage());
+        }
     }
 
     /**
-     * 生成统计报告
+     * 获取用户指定年份的每年统计
      */
-    @PostMapping("/report")
-    public ResponseDTO<?> generateReport() {
-        
-        // 模拟报告生成
-        Map<String, Object> reportData = new HashMap<>();
-        reportData.put("success", true);
-        reportData.put("message", "报告生成成功");
-        
-        return ResponseDTO.success(reportData);
+    @GetMapping("/user/yearly/{userNumber}/{year}")
+    public ResponseDTO<?> getUserYearlyStatsByYear(
+            @PathVariable String userNumber,
+            @PathVariable int year) {
+
+        try {
+            UserYearlyStats stats = statisticsService.getUserYearlyStats(userNumber, year);
+            if (stats != null) {
+                return ResponseDTO.success(stats);
+            } else {
+                return ResponseDTO.error("未找到指定年份的统计数据");
+            }
+        } catch (Exception e) {
+            return ResponseDTO.error("获取用户每年统计数据失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 工作室每日统计 ====================
+
+    /**
+     * 获取工作室每日统计数据
+     */
+    @GetMapping("/studio/daily/{studioId}")
+    public ResponseDTO<?> getStudioDailyStats(
+            @PathVariable Long studioId,
+            @RequestParam(required = false, defaultValue = "7") int limit) {
+
+        try {
+            List<StudioDailyStats> stats = statisticsService.getStudioDailyStatsList(studioId, limit);
+            return ResponseDTO.success(stats);
+        } catch (Exception e) {
+            return ResponseDTO.error("获取工作室每日统计数据失败: " + e.getMessage());
+        }
     }
 
     /**
-     * 获取指定天数前的日期
+     * 获取工作室指定日期的每日统计
      */
-    private String getDateBefore(int days) {
-        java.util.Calendar calendar = java.util.Calendar.getInstance();
-        calendar.add(java.util.Calendar.DAY_OF_YEAR, -days);
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
-        return sdf.format(calendar.getTime());
+    @GetMapping("/studio/daily/{studioId}/{date}")
+    public ResponseDTO<?> getStudioDailyStatsByDate(
+            @PathVariable Long studioId,
+            @PathVariable String date) {
+
+        try {
+            StudioDailyStats stats = statisticsService.getStudioDailyStats(studioId, date);
+            if (stats != null) {
+                return ResponseDTO.success(stats);
+            } else {
+                return ResponseDTO.error("未找到指定日期的工作室统计数据");
+            }
+        } catch (Exception e) {
+            return ResponseDTO.error("获取工作室每日统计数据失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 工作室每周统计 ====================
+
+    /**
+     * 获取工作室每周统计数据
+     */
+    @GetMapping("/studio/weekly/{studioId}")
+    public ResponseDTO<?> getStudioWeeklyStats(
+            @PathVariable Long studioId,
+            @RequestParam(required = false, defaultValue = "4") int limit) {
+
+        try {
+            List<StudioWeeklyStats> stats = statisticsService.getStudioWeeklyStatsList(studioId, limit);
+            return ResponseDTO.success(stats);
+        } catch (Exception e) {
+            return ResponseDTO.error("获取工作室每周统计数据失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取工作室指定周的每周统计
+     */
+    @GetMapping("/studio/weekly/{studioId}/{weekStartDate}")
+    public ResponseDTO<?> getStudioWeeklyStatsByWeek(
+            @PathVariable Long studioId,
+            @PathVariable String weekStartDate) {
+
+        try {
+            StudioWeeklyStats stats = statisticsService.getStudioWeeklyStats(studioId, weekStartDate);
+            if (stats != null) {
+                return ResponseDTO.success(stats);
+            } else {
+                return ResponseDTO.error("未找到指定周的工作室统计数据");
+            }
+        } catch (Exception e) {
+            return ResponseDTO.error("获取工作室每周统计数据失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 工作室每月统计 ====================
+
+    /**
+     * 获取工作室每月统计数据
+     */
+    @GetMapping("/studio/monthly/{studioId}")
+    public ResponseDTO<?> getStudioMonthlyStats(
+            @PathVariable Long studioId,
+            @RequestParam(required = false, defaultValue = "12") int limit) {
+
+        try {
+            List<StudioMonthlyStats> stats = statisticsService.getStudioMonthlyStatsList(studioId, limit);
+            return ResponseDTO.success(stats);
+        } catch (Exception e) {
+            return ResponseDTO.error("获取工作室每月统计数据失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取工作室指定月份的每月统计
+     */
+    @GetMapping("/studio/monthly/{studioId}/{year}/{month}")
+    public ResponseDTO<?> getStudioMonthlyStatsByMonth(
+            @PathVariable Long studioId,
+            @PathVariable int year,
+            @PathVariable int month) {
+
+        try {
+            StudioMonthlyStats stats = statisticsService.getStudioMonthlyStats(studioId, month, year);
+            if (stats != null) {
+                return ResponseDTO.success(stats);
+            } else {
+                return ResponseDTO.error("未找到指定月份的工作室统计数据");
+            }
+        } catch (Exception e) {
+            return ResponseDTO.error("获取工作室每月统计数据失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 工作室每年统计 ====================
+
+    /**
+     * 获取工作室每年统计数据
+     */
+    @GetMapping("/studio/yearly/{studioId}")
+    public ResponseDTO<?> getStudioYearlyStats(
+            @PathVariable Long studioId,
+            @RequestParam(required = false, defaultValue = "5") int limit) {
+
+        try {
+            List<StudioYearlyStats> stats = statisticsService.getStudioYearlyStatsList(studioId, limit);
+            return ResponseDTO.success(stats);
+        } catch (Exception e) {
+            return ResponseDTO.error("获取工作室每年统计数据失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取工作室指定年份的每年统计
+     */
+    @GetMapping("/studio/yearly/{studioId}/{year}")
+    public ResponseDTO<?> getStudioYearlyStatsByYear(
+            @PathVariable Long studioId,
+            @PathVariable int year) {
+
+        try {
+            StudioYearlyStats stats = statisticsService.getStudioYearlyStats(studioId, year);
+            if (stats != null) {
+                return ResponseDTO.success(stats);
+            } else {
+                return ResponseDTO.error("未找到指定年份的工作室统计数据");
+            }
+        } catch (Exception e) {
+            return ResponseDTO.error("获取工作室每年统计数据失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 综合统计查询 ====================
+
+    /**
+     * 获取工作室成员的每日统计数据
+     */
+    @GetMapping("/studio/{studioId}/members/daily/{date}")
+    public ResponseDTO<?> getStudioUserDailyStats(
+            @PathVariable Long studioId,
+            @PathVariable String date) {
+
+        try {
+            List<UserDailyStats> stats = statisticsService.getStudioUserDailyStats(studioId, date);
+            return ResponseDTO.success(stats);
+        } catch (Exception e) {
+            return ResponseDTO.error("获取工作室成员每日统计数据失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取工作室成员的月度统计数据
+     */
+    @GetMapping("/studio/{studioId}/members/monthly/{year}/{month}")
+    public ResponseDTO<?> getStudioUserMonthlyStats(
+            @PathVariable Long studioId,
+            @PathVariable int year,
+            @PathVariable int month) {
+
+        try {
+            List<UserMonthlyStats> stats = statisticsService.getStudioUserMonthlyStats(studioId, month, year);
+            return ResponseDTO.success(stats);
+        } catch (Exception e) {
+            return ResponseDTO.error("获取工作室成员月度统计数据失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 统计概览 ====================
+
+    /**
+     * 获取统计概览数据
+     */
+    @GetMapping("/overview")
+    public ResponseDTO<?> getStatisticsOverview(
+            @RequestParam(required = false) String date) {
+
+        try {
+            final String targetDate = date != null ? date : LocalDate.now().format(DATE_FORMATTER);
+
+            Map<String, Object> overview = new HashMap<>();
+
+            // 获取今日所有用户的每日统计
+            List<UserDailyStats> todayStats = statisticsService.getUserDailyStatsList("", 1000); // 获取所有用户
+            todayStats = todayStats.stream()
+                    .filter(s -> targetDate.equals(s.getDate()))
+                    .collect(Collectors.toList());
+
+            // 计算概览数据
+            int totalUsers = todayStats.size();
+            int presentUsers = (int) todayStats.stream()
+                    .filter(s -> !"absent".equals(s.getAttendanceStatus()))
+                    .count();
+            int lateUsers = (int) todayStats.stream()
+                    .filter(s -> s.getLateMinutes() > 0)
+                    .count();
+            int earlyLeaveUsers = (int) todayStats.stream()
+                    .filter(s -> s.getEarlyLeaveMinutes() > 0)
+                    .count();
+
+            double averageAttendanceRate = totalUsers > 0 ? (double) presentUsers / totalUsers * 100 : 0;
+            double averageActivityScore = todayStats.stream()
+                    .mapToDouble(UserDailyStats::getActivityScore)
+                    .average().orElse(0.0);
+            double averageWorkHours = todayStats.stream()
+                    .mapToDouble(UserDailyStats::getWorkHours)
+                    .average().orElse(0.0);
+
+            overview.put("date", targetDate);
+            overview.put("totalUsers", totalUsers);
+            overview.put("presentUsers", presentUsers);
+            overview.put("lateUsers", lateUsers);
+            overview.put("earlyLeaveUsers", earlyLeaveUsers);
+            overview.put("averageAttendanceRate", Math.round(averageAttendanceRate * 100.0) / 100.0);
+            overview.put("averageActivityScore", Math.round(averageActivityScore * 100.0) / 100.0);
+            overview.put("averageWorkHours", Math.round(averageWorkHours * 100.0) / 100.0);
+
+            return ResponseDTO.success(overview);
+        } catch (Exception e) {
+            return ResponseDTO.error("获取统计概览数据失败: " + e.getMessage());
+        }
+    }
+
+    // ==================== 手动触发统计计算 ====================
+
+    /**
+     * 手动触发每日统计计算
+     */
+    @PostMapping("/calculate/daily")
+    public ResponseDTO<?> triggerDailyStatistics() {
+        try {
+            statisticsService.executeDailyStatisticsTask();
+            return ResponseDTO.success("每日统计计算完成");
+        } catch (Exception e) {
+            return ResponseDTO.error("每日统计计算失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 手动触发每周统计计算
+     */
+    @PostMapping("/calculate/weekly")
+    public ResponseDTO<?> triggerWeeklyStatistics() {
+        try {
+            statisticsService.executeWeeklyStatisticsTask();
+            return ResponseDTO.success("每周统计计算完成");
+        } catch (Exception e) {
+            return ResponseDTO.error("每周统计计算失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 手动触发每月统计计算
+     */
+    @PostMapping("/calculate/monthly")
+    public ResponseDTO<?> triggerMonthlyStatistics() {
+        try {
+            statisticsService.executeMonthlyStatisticsTask();
+            return ResponseDTO.success("每月统计计算完成");
+        } catch (Exception e) {
+            return ResponseDTO.error("每月统计计算失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 手动触发每年统计计算
+     */
+    @PostMapping("/calculate/yearly")
+    public ResponseDTO<?> triggerYearlyStatistics() {
+        try {
+            statisticsService.executeYearlyStatisticsTask();
+            return ResponseDTO.success("每年统计计算完成");
+        } catch (Exception e) {
+            return ResponseDTO.error("每年统计计算失败: " + e.getMessage());
+        }
     }
 }

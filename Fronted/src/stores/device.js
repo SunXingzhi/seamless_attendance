@@ -63,7 +63,9 @@ export const useDeviceStore = defineStore('device', {
 			return {
 				id: deviceId,
 				deviceName: data.device_name || data.name || '未命名设备',
-				deviceId: data.device_id || deviceId.toString(),
+				// deviceId字段已废弃，使用id作为设备主键
+				// 保留deviceId字段用于兼容，但设置为与id相同
+				deviceId: deviceId,
 				ipAddress: data.ip_address || data.ipAddress || '-',
 				deviceType: data.device_type || data.type || '其他',
 				status: data.status === 'activated' ? 'active' : 'absent',
@@ -170,9 +172,11 @@ export const useDeviceStore = defineStore('device', {
 		// 转换为后端数据格式
 		transformToBackendFormat(data) {
 			console.log('转换数据:', data)
+			const deviceName = data.device_name || data.name || ''
 			return {
-				device_name: data.device_name || data.name || '',
-				device_id: data.device_id || '',
+				device_name: deviceName,
+				// device_id字段设置为与device_name相同，保持兼容性
+				device_id: deviceName,
 				studio_code: data.studio_code || data.studioId || '',
 				personnels: data.personnels || ''
 			}
