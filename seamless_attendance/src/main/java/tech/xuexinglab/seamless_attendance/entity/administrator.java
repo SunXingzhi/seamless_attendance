@@ -10,13 +10,13 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class administrator {
 	private Integer id;
-	private Integer user_id;
+	private Integer userId;
 	private String password;
 	private String name;
 	private String email;
 	private String phone;
 	private String role;
 	private String status;
-	private LocalDateTime create_time;
-	private LocalDateTime update_time;
+	private LocalDateTime createTime;
+	private LocalDateTime updateTime;
 }

@@ -89,9 +89,9 @@ public class deviceController {
 		device.setId(id);
 		// 获取源设备名称(eg:device_name:A1, origin_device_name:A)
 		device.setOriginDeviceName(deviceDTO.getOriginDeviceName());
-		device.setDevice_name(deviceDTO.getDevice_name());
-		device.setDevice_id(deviceDTO.getDevice_name()); // 统一使用device_name作为设备标识符
-		device.setStudio_codes(deviceDTO.getStudio_codes());
+		device.setDeviceName(deviceDTO.getDevice_name());
+		device.setDeviceId(deviceDTO.getDevice_name()); // 统一使用device_name作为设备标识符
+		device.setStudioCodes(deviceDTO.getStudio_codes());
 		device.setStatus("absent");
 
 		if (deviceDTO.getPersonnels() != null) {

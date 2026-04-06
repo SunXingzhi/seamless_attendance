@@ -50,9 +50,9 @@ public class deviceServiceImplement implements deviceService {
 	@Override
 	public int addDevice(deviceDTO deviceDTO) {
 		device device = new device();
-		device.setDevice_name(deviceDTO.getDevice_name());
-		device.setDevice_id(deviceDTO.getDevice_name()); // 统一使用device_name作为设备标识符
-		device.setStudio_codes(deviceDTO.getStudio_codes());
+		device.setDeviceName(deviceDTO.getDevice_name());
+		device.setDeviceId(deviceDTO.getDevice_name()); // 统一使用device_name作为设备标识符
+		device.setStudioCodes(deviceDTO.getStudio_codes());
 		device.setPersonnels(deviceDTO.getPersonnels());
 		// 默认新建设备为未激活状态
 		device.setStatus("inactive");
@@ -85,7 +85,7 @@ public class deviceServiceImplement implements deviceService {
 				return 0;
 			}
 			
-			String deviceName = device.getDevice_name();
+			String deviceName = device.getDeviceName();
 			String personnels = device.getPersonnels();
 			
 			// 2. 向设备发送fullreset命令，初始化硬件
@@ -103,7 +103,7 @@ public class deviceServiceImplement implements deviceService {
 			if (personnels != null && !personnels.trim().isEmpty()) {
 				List<String> personnelList = Arrays.asList(personnels.split(","));
 				for (String personnel : personnelList) {
-					String userNumber = (userMapper.getUserInfoByName(personnel.trim())).getUser_number();
+					String userNumber = (userMapper.getUserInfoByName(personnel.trim())).getUserNumber();
 					if (userNumber != null) {
 						// 解除人员与设备的配对关系
 						userMapper.updateUserPairingStatus(userNumber, "unpaired", null);
@@ -248,7 +248,7 @@ public class deviceServiceImplement implements deviceService {
                         // 根据人名信息获取人员编号(学号)
                         personnelList   =  Arrays.asList(personnels.split(","));
                         for(String personnel : personnelList) {
-                                String userNumber = (userMapper.getUserInfoByName(personnel.trim())).getUser_number();
+                                String userNumber = (userMapper.getUserInfoByName(personnel.trim())).getUserNumber();
                                 if(userNumber != null) {
                                         // 解除人员与设备的配对关系
                                         userMapper.updateUserPairingStatus(userNumber, "unpaired", null);
@@ -281,7 +281,7 @@ public class deviceServiceImplement implements deviceService {
                                 if (personnels != null && !personnels.trim().isEmpty()) {
                                         List<String> personnelList = Arrays.asList(personnels.split(","));
                                         for (String personnel : personnelList) {
-                                                String userNumber = (userMapper.getUserInfoByName(personnel.trim())).getUser_number();
+                                                String userNumber = (userMapper.getUserInfoByName(personnel.trim())).getUserNumber();
                                                 if (userNumber != null) {
                                                         // 解除人员与设备的配对关系
                                                         userMapper.updateUserPairingStatus(userNumber, "unpaired", null);
@@ -296,9 +296,9 @@ public class deviceServiceImplement implements deviceService {
                                 deviceMapper.updateDevice(device);
                                 
                                 // 3. 发送reset命令到设备
-                                String resetCommand = String.format("{\"ID\":\"%s\",\"CMD\":\"cmd\",\"cmd\":\"reset\"}", device.getDevice_name());
+                                String resetCommand = String.format("{\"ID\":\"%s\",\"CMD\":\"cmd\",\"cmd\":\"reset\"}", device.getDeviceName());
                                 mqttMessageSender.sendMessage(mqttProperties.commandTopic, resetCommand);
-                                logger.info("Sent reset command to device: {} (id: {})", device.getDevice_name(), id);
+                                logger.info("Sent reset command to device: {} (id: {})", device.getDeviceName(), id);
                                 
                                 return true;
                         }

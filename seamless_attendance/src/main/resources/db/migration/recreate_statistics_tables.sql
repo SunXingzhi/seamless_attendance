@@ -1,25 +1,23 @@
 -- =====================================================
--- 统计表结构定义 - 与Mapper字段完全一致
--- 此文件使用CREATE TABLE IF NOT EXISTS，不会删除现有数据
--- 如果需要重新创建表，请执行recreate_statistics_tables.sql
+-- 重新创建统计表 - 确保与Mapper字段完全一致
+-- 执行此脚本将删除现有统计表并创建新表
 -- =====================================================
+
+-- 禁用外键检查（避免删除表时出现外键约束错误）
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- ==================== 删除现有统计表 ====================
 DROP TABLE IF EXISTS user_daily_stats;
-
 DROP TABLE IF EXISTS user_weekly_stats;
-
 DROP TABLE IF EXISTS user_monthly_stats;
-
 DROP TABLE IF EXISTS user_yearly_stats;
-
 DROP TABLE IF EXISTS studio_daily_stats;
-
 DROP TABLE IF EXISTS studio_weekly_stats;
-
 DROP TABLE IF EXISTS studio_monthly_stats;
-
 DROP TABLE IF EXISTS studio_yearly_stats;
--- ==================== 用户每日统计表 ====================
-CREATE TABLE IF NOT EXISTS user_daily_stats (
+
+-- ==================== 创建用户每日统计表 ====================
+CREATE TABLE user_daily_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     user_number VARCHAR(50) NOT NULL COMMENT '用户工号',
     date DATE NOT NULL COMMENT '统计日期 (yyyy-MM-dd)',
@@ -37,8 +35,8 @@ CREATE TABLE IF NOT EXISTS user_daily_stats (
     INDEX idx_date (date)
 ) COMMENT '用户每日统计表';
 
--- ==================== 用户每周统计表 ====================
-CREATE TABLE IF NOT EXISTS user_weekly_stats (
+-- ==================== 创建用户每周统计表 ====================
+CREATE TABLE user_weekly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     user_number VARCHAR(50) NOT NULL COMMENT '用户工号',
     week_start_date DATE NOT NULL COMMENT '周开始日期 (yyyy-MM-dd)',
@@ -57,8 +55,8 @@ CREATE TABLE IF NOT EXISTS user_weekly_stats (
     INDEX idx_week_start_date (week_start_date)
 ) COMMENT '用户每周统计表';
 
--- ==================== 用户每月统计表 ====================
-CREATE TABLE IF NOT EXISTS user_monthly_stats (
+-- ==================== 创建用户每月统计表 ====================
+CREATE TABLE user_monthly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     user_number VARCHAR(50) NOT NULL COMMENT '用户工号',
     year INT NOT NULL COMMENT '年份',
@@ -79,8 +77,8 @@ CREATE TABLE IF NOT EXISTS user_monthly_stats (
     INDEX idx_year_month (year, month)
 ) COMMENT '用户每月统计表';
 
--- ==================== 用户每年统计表 ====================
-CREATE TABLE IF NOT EXISTS user_yearly_stats (
+-- ==================== 创建用户每年统计表 ====================
+CREATE TABLE user_yearly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     user_number VARCHAR(50) NOT NULL COMMENT '用户工号',
     year INT NOT NULL COMMENT '年份',
@@ -101,8 +99,8 @@ CREATE TABLE IF NOT EXISTS user_yearly_stats (
     INDEX idx_year (year)
 ) COMMENT '用户每年统计表';
 
--- ==================== 工作室每日统计表 ====================
-CREATE TABLE IF NOT EXISTS studio_daily_stats (
+-- ==================== 创建工作室每日统计表 ====================
+CREATE TABLE studio_daily_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     studio_id BIGINT NOT NULL COMMENT '工作室ID',
     date DATE NOT NULL COMMENT '统计日期 (yyyy-MM-dd)',
@@ -120,8 +118,8 @@ CREATE TABLE IF NOT EXISTS studio_daily_stats (
     INDEX idx_date (date)
 ) COMMENT '工作室每日统计表';
 
--- ==================== 工作室每周统计表 ====================
-CREATE TABLE IF NOT EXISTS studio_weekly_stats (
+-- ==================== 创建工作室每周统计表 ====================
+CREATE TABLE studio_weekly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     studio_id BIGINT NOT NULL COMMENT '工作室ID',
     week_start_date DATE NOT NULL COMMENT '周开始日期 (yyyy-MM-dd)',
@@ -139,8 +137,8 @@ CREATE TABLE IF NOT EXISTS studio_weekly_stats (
     INDEX idx_week_start_date (week_start_date)
 ) COMMENT '工作室每周统计表';
 
--- ==================== 工作室每月统计表 ====================
-CREATE TABLE IF NOT EXISTS studio_monthly_stats (
+-- ==================== 创建工作室每月统计表 ====================
+CREATE TABLE studio_monthly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     studio_id BIGINT NOT NULL COMMENT '工作室ID',
     year INT NOT NULL COMMENT '年份',
@@ -160,8 +158,8 @@ CREATE TABLE IF NOT EXISTS studio_monthly_stats (
     INDEX idx_year_month (year, month)
 ) COMMENT '工作室每月统计表';
 
--- ==================== 工作室每年统计表 ====================
-CREATE TABLE IF NOT EXISTS studio_yearly_stats (
+-- ==================== 创建工作室每年统计表 ====================
+CREATE TABLE studio_yearly_stats (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
     studio_id BIGINT NOT NULL COMMENT '工作室ID',
     year INT NOT NULL COMMENT '年份',
@@ -180,3 +178,9 @@ CREATE TABLE IF NOT EXISTS studio_yearly_stats (
     INDEX idx_studio_id (studio_id),
     INDEX idx_year (year)
 ) COMMENT '工作室每年统计表';
+
+-- 重新启用外键检查
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ==================== 表结构验证 ====================
+SELECT '统计表创建完成' AS message;

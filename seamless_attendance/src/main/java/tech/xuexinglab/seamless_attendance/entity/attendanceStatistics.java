@@ -12,13 +12,13 @@ import java.time.LocalDateTime;
 public class attendanceStatistics {
         private Integer id;
         private LocalDateTime date;
-        private Integer studio_id;
-        private Integer total_attendance;
-        private Integer total_absent;
-        private Integer total_late;
-        private Integer total_early_leave;
-        private Integer total_leave;
-        private Integer total_other;
-        private LocalDateTime create_time;
-        private LocalDateTime update_time;
+        private Integer studioId;
+        private Integer totalAttendance;
+        private Integer totalAbsent;
+        private Integer totalLate;
+        private Integer totalEarlyLeave;
+        private Integer totalLeave;
+        private Integer totalOther;
+        private LocalDateTime createTime;
+        private LocalDateTime updateTime;
 }

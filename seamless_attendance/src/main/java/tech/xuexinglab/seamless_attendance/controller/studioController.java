@@ -68,7 +68,7 @@ public class studioController {
                 
                 // 构建考勤信息响应
                 final int[] presentCount = {0}; // 使用数组包装，使其成为effectively final
-                final int totalCount = studio.getMember_count() != null ? studio.getMember_count() : 0;
+                final int totalCount = studio.getMemberCount() != null ? studio.getMemberCount() : 0;
                 final java.util.List<Object> presentPersons = new java.util.ArrayList<>();
                 final java.util.List<Object> absentPersons = new java.util.ArrayList<>();
                 
@@ -87,7 +87,7 @@ public class studioController {
                                                         // 构建人员信息
                                                         Object personInfo = new Object() {
                                                                 public String name = userInfo.getName();
-                                                                public String userNumber = userInfo.getUser_number();
+                                                                public String userNumber = userInfo.getUserNumber();
                                                                 public String status = userInfo.getStatus();
                                                         };
                                                         

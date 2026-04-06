@@ -14,9 +14,9 @@
                         <div class="filter-group">
                                 <label>分析对象:</label>
                                 <select v-model="analysisType">
-                                        <option value="all">总体分析</option>
-                                        <option value="department">部门分析</option>
+                                        <option value="department">工作室分析</option>
                                         <option value="individual">个人分析</option>
+
                                 </select>
                         </div>
                         <button @click="generateAnalysis" class="generate-btn">生成分析</button>

@@ -121,12 +121,12 @@ const transformAttendanceRecord = (data) => {
         return {
                 id: data.id,
                 date: data.date,
-                userId: data.user_id,
-                userName: data.name,
-                userNumber: data.user_number,
-                checkInTime: data.check_in_time || '-',
-                checkOutTime: data.check_out_time || '-',
-                workTime: data.work_hours || '-',
+                userId: data.userId,
+                userName: data.userName,
+                userNumber: data.userNumber,
+                checkInTime: data.checkInTime || '-',
+                checkOutTime: data.checkOutTime || '-',
+                workTime: data.workHours || '-',
                 status: data.status,
                 remark: data.remark || ''
         }

@@ -9,22 +9,22 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class user {
 	private Integer id;
-	private String user_number;
-	private String user_name;
+	private String userNumber;
+	private String userName;
 	private String name;
 	private String password;
-        private String contact_type;
-	private String contact_value;
+        private String contactType;
+	private String contactValue;
         private String role;
-        private String job_title;
-        private String work_content;
-	private String studio_id;
-	private Integer studio_admin_id;
+        private String jobTitle;
+        private String workContent;
+	private String studioId;
+	private Integer studioAdminId;
         private String avatar;          // 头像URL
 	private String status;          // active:在勤, absent:缺勤, excused:请假, holiday:放假, leave:离开
-        private String pairing_status;
-        private Integer device_id;
-        private String join_date;
-	private String create_time;
-	private String update_time;
+        private String pairingStatus;
+        private Integer deviceId;
+        private String joinDate;
+	private String createTime;
+	private String updateTime;
 }

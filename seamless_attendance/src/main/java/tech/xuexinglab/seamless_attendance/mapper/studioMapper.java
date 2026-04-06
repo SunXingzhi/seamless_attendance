@@ -18,16 +18,16 @@ public interface studioMapper {
         @Select("select * from studio where id = #{id}")
         studio getStudioById(Integer id);
 
-        @Select("select * from studio where admin_id = #{admin_id}")
-        List<studio> getStudiosByAdminId(Integer admin_id);
+        @Select("select * from studio where admin_id = #{adminId}")
+        List<studio> getStudiosByAdminId(Integer adminId);
 
         @Insert("INSERT INTO studio (studio_name, studio_code, description, personnels, admin_id, member_count, max_member_count, status, create_time, update_time) " +
-                "VALUES (#{studio_name}, #{studio_code}, #{description}, #{personnels}, #{admin_id}, #{member_count}, #{max_member_count}, #{status}, NOW(), NOW())")
+                "VALUES (#{studioName}, #{studioCode}, #{description}, #{personnels}, #{adminId}, #{memberCount}, #{maxMemberCount}, #{status}, NOW(), NOW())")
         int insertStudio(studio studio);
 
-        @Update("UPDATE studio SET studio_name = #{studio_name}, studio_code = #{studio_code}, description = #{description}, " +
-                "personnels = #{personnels}, admin_id = #{admin_id}, " +
-                "member_count = #{member_count}, max_member_count = #{max_member_count}, " +
+        @Update("UPDATE studio SET studio_name = #{studioName}, studio_code = #{studioCode}, description = #{description}, " +
+                "personnels = #{personnels}, admin_id = #{adminId}, " +
+                "member_count = #{memberCount}, max_member_count = #{maxMemberCount}, " +
                 "status = #{status}, update_time = NOW() WHERE id = #{id}")
         int updateStudio(studio studio);
 

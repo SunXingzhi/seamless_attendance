@@ -378,10 +378,7 @@ public class StatisticsController {
             Map<String, Object> overview = new HashMap<>();
 
             // 获取今日所有用户的每日统计
-            List<UserDailyStats> todayStats = statisticsService.getUserDailyStatsList("", 1000); // 获取所有用户
-            todayStats = todayStats.stream()
-                    .filter(s -> targetDate.equals(s.getDate()))
-                    .collect(Collectors.toList());
+            List<UserDailyStats> todayStats = statisticsService.getAllUserDailyStatsByDate(targetDate);
 
             // 计算概览数据
             int totalUsers = todayStats.size();

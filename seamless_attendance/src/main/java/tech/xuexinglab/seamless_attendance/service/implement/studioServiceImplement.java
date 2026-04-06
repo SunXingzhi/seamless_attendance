@@ -38,8 +38,8 @@ public class studioServiceImplement implements studioService {
         @Override
         public studio createStudio(studioDTO studioDTO) {
                 studio studio = new studio();
-                studio.setStudio_name(studioDTO.getStudio_name());
-                studio.setStudio_code(studioDTO.getStudio_code());
+                studio.setStudioName(studioDTO.getStudio_name());
+                studio.setStudioCode(studioDTO.getStudio_code());
                 studio.setDescription(studioDTO.getDescription());
                 
                 // 设置管理员信息
@@ -52,20 +52,20 @@ public class studioServiceImplement implements studioService {
                         user adminUser = userMapper.getUserInfoByUserNumber(adminUserNumber);
                         if (adminUser != null) {
                                 adminId = adminUser.getId();
-                                studio.setAdmin_name(adminUser.getName());
-                                studio.setAdmin_user_number(adminUser.getUser_number());
+                                studio.setAdminName(adminUser.getName());
+                                studio.setAdminUserNumber(adminUser.getUserNumber());
                         }
                 } else if (adminName != null && !adminName.isEmpty()) {
                         // 如果没有工号，尝试通过姓名查询
                         user adminUser = userMapper.getUserInfoByName(adminName);
                         if (adminUser != null) {
                                 adminId = adminUser.getId();
-                                studio.setAdmin_name(adminUser.getName());
-                                studio.setAdmin_user_number(adminUser.getUser_number());
+                                studio.setAdminName(adminUser.getName());
+                                studio.setAdminUserNumber(adminUser.getUserNumber());
                         }
                 }
                 
-                studio.setAdmin_id(adminId);
+                studio.setAdminId(adminId);
                 
                 // 计算member_count和max_member_count
                 int totalMemberCount = 0;
@@ -108,8 +108,8 @@ public class studioServiceImplement implements studioService {
                 }
                 studio.setPersonnels(userIdStr.toString());
                 
-                studio.setMember_count(totalMemberCount);
-                studio.setMax_member_count(maxMemberCount);
+                studio.setMemberCount(totalMemberCount);
+                studio.setMaxMemberCount(maxMemberCount);
                 studio.setStatus("active");
                 
                 studioMapper.insertStudio(studio);
@@ -125,8 +125,8 @@ public class studioServiceImplement implements studioService {
         public int updateStudio(Integer id, studioDTO studioDTO) {
                 studio studio = new studio();
                 studio.setId(id);
-                studio.setStudio_name(studioDTO.getStudio_name());
-                studio.setStudio_code(studioDTO.getStudio_code());
+                studio.setStudioName(studioDTO.getStudio_name());
+                studio.setStudioCode(studioDTO.getStudio_code());
                 studio.setDescription(studioDTO.getDescription());
                 
                 // 设置管理员信息
@@ -139,20 +139,20 @@ public class studioServiceImplement implements studioService {
                         user adminUser = userMapper.getUserInfoByUserNumber(adminUserNumber);
                         if (adminUser != null) {
                                 adminId = adminUser.getId();
-                                studio.setAdmin_name(adminUser.getName());
-                                studio.setAdmin_user_number(adminUser.getUser_number());
+                                studio.setAdminName(adminUser.getName());
+                                studio.setAdminUserNumber(adminUser.getUserNumber());
                         }
                 } else if (adminName != null && !adminName.isEmpty()) {
                         // 如果没有工号，尝试通过姓名查询
                         user adminUser = userMapper.getUserInfoByName(adminName);
                         if (adminUser != null) {
                                 adminId = adminUser.getId();
-                                studio.setAdmin_name(adminUser.getName());
-                                studio.setAdmin_user_number(adminUser.getUser_number());
+                                studio.setAdminName(adminUser.getName());
+                                studio.setAdminUserNumber(adminUser.getUserNumber());
                         }
                 }
                 
-                studio.setAdmin_id(adminId);
+                studio.setAdminId(adminId);
                 
                 // 计算member_count和max_member_count
                 int totalMemberCount = 0;
@@ -195,8 +195,8 @@ public class studioServiceImplement implements studioService {
                 }
                 studio.setPersonnels(userIdStr.toString());
                 
-                studio.setMember_count(totalMemberCount);
-                studio.setMax_member_count(maxMemberCount);
+                studio.setMemberCount(totalMemberCount);
+                studio.setMaxMemberCount(maxMemberCount);
                 studio.setStatus("active");
                 
                 return studioMapper.updateStudio(studio);

@@ -27,6 +27,11 @@ public interface StatisticsService {
      */
     List<UserDailyStats> getUserDailyStatsList(String userNumber, int limit);
 
+    /**
+     * 获取指定日期的所有用户每日统计数据
+     */
+    List<UserDailyStats> getAllUserDailyStatsByDate(String date);
+
     // ==================== 用户每周统计 ====================
 
     /**

@@ -14,7 +14,7 @@ public interface deviceMapper {
 	// 新增设备
 	@Insert("INSERT INTO device (device_name, device_id, studio_codes, personnels, status, create_time, update_time) "
 			+
-			"VALUES (#{device_name}, #{device_id}, #{studio_codes}, #{personnels}, #{status}, NOW(), NOW())")
+			"VALUES (#{deviceName}, #{deviceId}, #{studioCodes}, #{personnels}, #{status}, NOW(), NOW())")
 	int insertDevice(device device);
 
 	// 获取设备列表
@@ -37,7 +37,7 @@ public interface deviceMapper {
 	device getDeviceByDeviceName(@Param("deviceName") String deviceName);
 
 	// 更新设备
-	@Update("UPDATE device SET device_name = #{device_name}, device_id = #{device_id}, studio_codes = #{studio_codes}, "
+	@Update("UPDATE device SET device_name = #{deviceName}, device_id = #{deviceId}, studio_codes = #{studioCodes}, "
 			+
 			"personnels = #{personnels}, status = #{status}, update_time = NOW() " +
 			"WHERE id = #{id}")

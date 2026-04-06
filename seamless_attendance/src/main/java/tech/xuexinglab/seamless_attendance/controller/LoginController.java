@@ -41,10 +41,10 @@ public class LoginController {
 		UserInfo userInfo = new UserInfo();
 		userInfo.setId(user.getId());
 		userInfo.setName(user.getName());
-		userInfo.setUsername(user.getUser_name());
+		userInfo.setUsername(user.getUserName());
 		userInfo.setRole(user.getRole());
-		userInfo.setStudioId(user.getStudio_id());
-		userInfo.setStudioAdminId(user.getStudio_admin_id());
+		userInfo.setStudioId(user.getStudioId());
+		userInfo.setStudioAdminId(user.getStudioAdminId());
 
 		return ResponseDTO.success(userInfo);
 	}

@@ -9,9 +9,9 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 public class lotRecord {
         Integer id;
-        String  device_id;
-        String personnel1_status;
-        String personnel2_status;
-        String personnel3_status;
+        String  deviceId;
+        String personnel1Status;
+        String personnel2Status;
+        String personnel3Status;
         
 }

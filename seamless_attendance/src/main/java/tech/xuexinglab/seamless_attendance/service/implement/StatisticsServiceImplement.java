@@ -48,11 +48,11 @@ public class StatisticsServiceImplement implements StatisticsService {
 		}
 
 		// 计算工作时间（如果有打卡记录）
-		double workHours = record.getWork_hours() != null ? record.getWork_hours() : 0.0;
+		double workHours = record.getWorkHours() != null ? record.getWorkHours() : 0.0;
 
 		// 计算迟到和早退分钟数
-		int lateMinutes = calculateLateMinutes(record.getCheck_in_time());
-		int earlyLeaveMinutes = calculateEarlyLeaveMinutes(record.getCheck_out_time());
+		int lateMinutes = calculateLateMinutes(record.getCheckInTime());
+		int earlyLeaveMinutes = calculateEarlyLeaveMinutes(record.getCheckOutTime());
 
 		// 计算活跃度分数（基于工作时间、状态等）
 		double activityScore = calculateActivityScore(workHours, record.getStatus(), lateMinutes,
@@ -68,8 +68,8 @@ public class StatisticsServiceImplement implements StatisticsService {
 		stats.setWorkHours(workHours);
 		stats.setActivityScore(activityScore);
 		stats.setAttendanceStatus(attendanceStatus);
-		stats.setCheckInTime(record.getCheck_in_time());
-		stats.setCheckOutTime(record.getCheck_out_time());
+		stats.setCheckInTime(record.getCheckInTime());
+		stats.setCheckOutTime(record.getCheckOutTime());
 		stats.setLateMinutes(lateMinutes);
 		stats.setEarlyLeaveMinutes(earlyLeaveMinutes);
 		stats.setCreateTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
@@ -101,24 +101,24 @@ public class StatisticsServiceImplement implements StatisticsService {
 		for (user u : allUsers) {
 
 			attendanceRecord record = attendanceMapper
-					.getAttendanceRecordByUserNumberAndDate(u.getUser_number(), date);
+					.getAttendanceRecordByUserNumberAndDate(u.getUserNumber(), date);
 			if (record != null) {
-				workHours = record.getWork_hours() != null ? record.getWork_hours() : 0.0;
-				lateMinutes = calculateLateMinutes(record.getCheck_in_time());
-				earlyLeaveMinutes = calculateEarlyLeaveMinutes(record.getCheck_out_time());
+				workHours = record.getWorkHours() != null ? record.getWorkHours() : 0.0;
+				lateMinutes = calculateLateMinutes(record.getCheckInTime());
+				earlyLeaveMinutes = calculateEarlyLeaveMinutes(record.getCheckOutTime());
 				activityScore = calculateActivityScore(workHours, record.getStatus(),
 						lateMinutes, earlyLeaveMinutes);
 				attendanceStatus = determineAttendanceStatus(record.getStatus(), workHours,
 						lateMinutes, earlyLeaveMinutes);
 
 				UserDailyStats stats = new UserDailyStats();
-				stats.setUserNumber(u.getUser_number());
+				stats.setUserNumber(u.getUserNumber());
 				stats.setDate(date);
 				stats.setWorkHours(workHours);
 				stats.setActivityScore(activityScore);
 				stats.setAttendanceStatus(attendanceStatus);
-				stats.setCheckInTime(record.getCheck_in_time());
-				stats.setCheckOutTime(record.getCheck_out_time());
+				stats.setCheckInTime(record.getCheckInTime());
+				stats.setCheckOutTime(record.getCheckOutTime());
 				stats.setLateMinutes(lateMinutes);
 				stats.setEarlyLeaveMinutes(earlyLeaveMinutes);
 				stats.setCreateTime(LocalDateTime.now()
@@ -142,6 +142,11 @@ public class StatisticsServiceImplement implements StatisticsService {
 	@Override
 	public List<UserDailyStats> getUserDailyStatsList(String userNumber, int limit) {
 		return statisticsMapper.getUserDailyStatsList(userNumber, limit);
+	}
+
+	@Override
+	public List<UserDailyStats> getAllUserDailyStatsByDate(String date) {
+		return statisticsMapper.getAllUserDailyStatsByDate(date);
 	}
 
 	// ==================== 用户每周统计 ====================
@@ -204,7 +209,7 @@ public class StatisticsServiceImplement implements StatisticsService {
 	public void calculateAndSaveAllUserWeeklyStats(String weekStartDate) {
 		List<user> allUsers = userMapper.getAllUserInfo();
 		for (user u : allUsers) {
-			calculateAndSaveUserWeeklyStats(u.getUser_number(), weekStartDate);
+			calculateAndSaveUserWeeklyStats(u.getUserNumber(), weekStartDate);
 		}
 	}
 
@@ -284,7 +289,7 @@ public class StatisticsServiceImplement implements StatisticsService {
 	public void calculateAndSaveAllUserMonthlyStats(int month, int year) {
 		List<user> allUsers = userMapper.getAllUserInfo();
 		for (user u : allUsers) {
-			calculateAndSaveUserMonthlyStats(u.getUser_number(), month, year);
+			calculateAndSaveUserMonthlyStats(u.getUserNumber(), month, year);
 		}
 	}
 
@@ -363,7 +368,7 @@ public class StatisticsServiceImplement implements StatisticsService {
 	public void calculateAndSaveAllUserYearlyStats(int year) {
 		List<user> allUsers = userMapper.getAllUserInfo();
 		for (user u : allUsers) {
-			calculateAndSaveUserYearlyStats(u.getUser_number(), year);
+			calculateAndSaveUserYearlyStats(u.getUserNumber(), year);
 		}
 	}
 
@@ -796,21 +801,39 @@ public class StatisticsServiceImplement implements StatisticsService {
 	// ==================== 辅助方法 ====================
 
 	/**
+	 * 从字符串中解析时间部分，支持格式：HH:mm:ss 或 yyyy-MM-dd HH:mm:ss
+	 */
+	private LocalTime parseTimeFromString(String timeStr) {
+		if (timeStr == null) {
+			return null;
+		}
+		try {
+			// 如果字符串包含空格，可能是完整的日期时间，提取时间部分
+			if (timeStr.contains(" ")) {
+				String[] parts = timeStr.split(" ");
+				if (parts.length >= 2) {
+					return LocalTime.parse(parts[1], TIME_FORMATTER);
+				}
+			}
+			// 否则直接解析为时间
+			return LocalTime.parse(timeStr, TIME_FORMATTER);
+		} catch (Exception e) {
+			// 解析失败，返回null
+			return null;
+		}
+	}
+
+	/**
 	 * 计算迟到分钟数（假设上班时间为9:00）
 	 */
 	private int calculateLateMinutes(String checkInTime) {
-		if (checkInTime == null)
+		LocalTime checkIn = parseTimeFromString(checkInTime);
+		if (checkIn == null)
 			return 0;
 
-		try {
-			LocalTime checkIn = LocalTime.parse(checkInTime, TIME_FORMATTER);
-			LocalTime standardTime = LocalTime.of(9, 0); // 假设9:00上班
-
-			if (checkIn.isAfter(standardTime)) {
-				return (int) ChronoUnit.MINUTES.between(standardTime, checkIn);
-			}
-		} catch (Exception e) {
-			// 解析失败，返回0
+		LocalTime standardTime = LocalTime.of(9, 0); // 假设9:00上班
+		if (checkIn.isAfter(standardTime)) {
+			return (int) ChronoUnit.MINUTES.between(standardTime, checkIn);
 		}
 		return 0;
 	}
@@ -819,18 +842,13 @@ public class StatisticsServiceImplement implements StatisticsService {
 	 * 计算早退分钟数（假设下班时间为18:00）
 	 */
 	private int calculateEarlyLeaveMinutes(String checkOutTime) {
-		if (checkOutTime == null)
+		LocalTime checkOut = parseTimeFromString(checkOutTime);
+		if (checkOut == null)
 			return 0;
 
-		try {
-			LocalTime checkOut = LocalTime.parse(checkOutTime, TIME_FORMATTER);
-			LocalTime standardTime = LocalTime.of(18, 0); // 假设18:00下班
-
-			if (checkOut.isBefore(standardTime)) {
-				return (int) ChronoUnit.MINUTES.between(checkOut, standardTime);
-			}
-		} catch (Exception e) {
-			// 解析失败，返回0
+		LocalTime standardTime = LocalTime.of(18, 0); // 假设18:00下班
+		if (checkOut.isBefore(standardTime)) {
+			return (int) ChronoUnit.MINUTES.between(checkOut, standardTime);
 		}
 		return 0;
 	}

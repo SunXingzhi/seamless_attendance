@@ -112,12 +112,12 @@
 					<tbody>
 						<tr v-for="stat in userStats" :key="stat.date || stat.weekStartDate || stat.month || stat.year">
 							<td>{{ formatDate(stat) }}</td>
-							<td>{{ stat.attendanceCount || stat.totalAttendance }}</td>
-							<td>{{ stat.lateCount || stat.totalLate }}</td>
-							<td>{{ stat.earlyLeaveCount || stat.totalEarlyLeave }}</td>
-							<td>{{ stat.absentCount || stat.totalAbsent }}</td>
-							<td>{{ stat.totalWorkHours ? stat.totalWorkHours.toFixed(1) : '-' }}</td>
-							<td>{{ stat.attendanceRate ? stat.attendanceRate.toFixed(1) : '-' }}</td>
+							<td>{{ mapStatFields(stat).attendanceCount }}</td>
+							<td>{{ mapStatFields(stat).lateCount }}</td>
+							<td>{{ mapStatFields(stat).earlyLeaveCount }}</td>
+							<td>{{ mapStatFields(stat).absentCount }}</td>
+							<td>{{ mapStatFields(stat).workHours ? mapStatFields(stat).workHours.toFixed(1) : '-' }}</td>
+							<td>{{ mapStatFields(stat).attendanceRate ? mapStatFields(stat).attendanceRate.toFixed(1) : '-' }}</td>
 						</tr>
 					</tbody>
 				</table>
@@ -143,12 +143,12 @@
 					<tbody>
 						<tr v-for="stat in studioStats" :key="stat.date || stat.weekStartDate || stat.month || stat.year">
 							<td>{{ formatDate(stat) }}</td>
-							<td>{{ stat.totalUsers }}</td>
-							<td>{{ stat.attendanceCount }}</td>
-							<td>{{ stat.lateCount }}</td>
-							<td>{{ stat.earlyLeaveCount }}</td>
-							<td>{{ stat.absentCount }}</td>
-							<td>{{ stat.attendanceRate ? stat.attendanceRate.toFixed(1) : '-' }}</td>
+							<td>{{ mapStudioStatFields(stat).totalUsers }}</td>
+							<td>{{ mapStudioStatFields(stat).attendanceCount }}</td>
+							<td>{{ mapStudioStatFields(stat).lateCount }}</td>
+							<td>{{ mapStudioStatFields(stat).earlyLeaveCount }}</td>
+							<td>{{ mapStudioStatFields(stat).absentCount }}</td>
+							<td>{{ mapStudioStatFields(stat).attendanceRate ? mapStudioStatFields(stat).attendanceRate.toFixed(1) : '-' }}</td>
 						</tr>
 					</tbody>
 				</table>
@@ -211,7 +211,16 @@ const fetchOverviewData = async () => {
 	try {
 		const today = new Date().toISOString().split('T')[0]
 		const response = await statisticsService.getStatisticsOverview(today)
-		overviewData.value = response.data
+		const backendData = response.data
+		// 映射后端字段到前端字段
+		overviewData.value = {
+			totalUsers: backendData.totalUsers || 0,
+			todayAttendance: backendData.presentUsers || 0,
+			todayLate: backendData.lateUsers || 0,
+			todayEarlyLeave: backendData.earlyLeaveUsers || 0,
+			todayAbsent: (backendData.totalUsers || 0) - (backendData.presentUsers || 0),
+			attendanceRate: backendData.averageAttendanceRate || 0
+		}
 	} catch (err) {
 		console.error('获取统计概览失败:', err)
 		// 设置默认数据
@@ -250,7 +259,7 @@ const fetchUserStats = async () => {
 		}
 
 		userStats.value = Array.isArray(response.data) ? response.data : [response.data]
-		drawTrendChart(userStats.value)
+		drawTrendChart(userStats.value, 'user')
 	} catch (err) {
 		console.error('获取用户统计失败:', err)
 		userStats.value = []
@@ -282,12 +291,116 @@ const fetchStudioStats = async () => {
 		}
 
 		studioStats.value = Array.isArray(response.data) ? response.data : [response.data]
-		drawTrendChart(studioStats.value)
+		drawTrendChart(studioStats.value, 'studio')
 	} catch (err) {
 		console.error('获取工作室统计失败:', err)
 		studioStats.value = []
 		error.value = '获取工作室统计数据失败'
 	}
+}
+
+// 映射统计字段到显示字段
+const mapStatFields = (stat) => {
+  if (!stat) return {}
+  
+  const period = timePeriod.value
+  const result = {
+    dateDisplay: formatDate(stat),
+    attendanceCount: 0,
+    lateCount: 0,
+    earlyLeaveCount: 0,
+    absentCount: 0,
+    workHours: 0,
+    attendanceRate: 0
+  }
+  
+  if (period === 'daily') {
+    // 每日统计字段映射
+    result.attendanceCount = stat.attendanceStatus === 'active' ? 1 : 0
+    result.lateCount = stat.lateMinutes > 0 ? 1 : 0
+    result.earlyLeaveCount = stat.earlyLeaveMinutes > 0 ? 1 : 0
+    result.absentCount = stat.attendanceStatus === 'absent' ? 1 : 0
+    result.workHours = stat.workHours || 0
+    result.attendanceRate = stat.attendanceStatus === 'active' ? 100 : 0
+  } else if (period === 'weekly') {
+    // 每周统计字段映射
+    result.attendanceCount = stat.totalWorkDays || 0
+    result.lateCount = stat.lateCount || 0
+    result.earlyLeaveCount = stat.earlyLeaveCount || 0
+    result.absentCount = stat.absentCount || 0
+    result.workHours = stat.totalWorkHours || 0
+    result.attendanceRate = stat.attendanceRate || 0
+  } else if (period === 'monthly') {
+    // 每月统计字段映射
+    result.attendanceCount = stat.totalWorkDays || 0
+    result.lateCount = stat.lateCount || 0
+    result.earlyLeaveCount = stat.earlyLeaveCount || 0
+    result.absentCount = stat.absentCount || 0
+    result.workHours = stat.totalWorkHours || 0
+    result.attendanceRate = stat.attendanceRate || 0
+  } else if (period === 'yearly') {
+    // 每年统计字段映射
+    result.attendanceCount = stat.totalWorkDays || 0
+    result.lateCount = stat.lateCount || 0
+    result.earlyLeaveCount = stat.earlyLeaveCount || 0
+    result.absentCount = stat.absentCount || 0
+    result.workHours = stat.totalWorkHours || 0
+    result.attendanceRate = stat.attendanceRate || 0
+  }
+  
+  return result
+}
+
+// 映射工作室统计字段到显示字段
+const mapStudioStatFields = (stat) => {
+  if (!stat) return {}
+  
+  const period = timePeriod.value
+  const result = {
+    dateDisplay: formatDate(stat),
+    totalUsers: 0,
+    attendanceCount: 0, // 到勤人数
+    lateCount: 0,
+    earlyLeaveCount: 0,
+    absentCount: 0,
+    attendanceRate: 0
+  }
+  
+  if (period === 'daily') {
+    // 工作室每日统计字段映射
+    result.totalUsers = stat.totalUsers || 0
+    result.attendanceCount = stat.presentUsers || 0
+    result.lateCount = stat.lateCount || 0
+    result.earlyLeaveCount = stat.earlyLeaveCount || 0
+    result.absentCount = result.totalUsers - result.attendanceCount // 缺勤人数
+    result.attendanceRate = stat.attendanceRate || 0
+  } else if (period === 'weekly') {
+    // 工作室每周统计字段映射
+    result.totalUsers = stat.totalUsers || 0
+    result.attendanceCount = stat.totalUsers || 0 // 没有直接到勤人数，使用总人数
+    result.lateCount = stat.totalLateCount || 0
+    result.earlyLeaveCount = stat.totalEarlyLeaveCount || 0
+    result.absentCount = stat.totalAbsentCount || 0
+    result.attendanceRate = stat.averageAttendanceRate || 0
+  } else if (period === 'monthly') {
+    // 工作室每月统计字段映射
+    result.totalUsers = stat.totalUsers || 0
+    result.attendanceCount = stat.totalUsers || 0
+    result.lateCount = stat.totalLateCount || 0
+    result.earlyLeaveCount = stat.totalEarlyLeaveCount || 0
+    result.absentCount = stat.totalAbsentCount || 0
+    result.attendanceRate = stat.averageAttendanceRate || 0
+  } else if (period === 'yearly') {
+    // 工作室每年统计字段映射
+    result.totalUsers = stat.totalUsers || 0
+    result.attendanceCount = stat.totalUsers || 0
+    result.lateCount = stat.totalLateCount || 0
+    result.earlyLeaveCount = stat.totalEarlyLeaveCount || 0
+    result.absentCount = stat.totalAbsentCount || 0
+    result.attendanceRate = stat.averageAttendanceRate || 0
+  }
+  
+  return result
 }
 
 // 统一的获取数据方法
@@ -321,7 +434,7 @@ const formatDate = (stat) => {
 }
 
 // 绘制趋势图表
-const drawTrendChart = (data) => {
+const drawTrendChart = (data, target = 'user') => {
 	const canvas = document.getElementById('trendCanvas')
 	if (!canvas || !data || data.length === 0) return
 
@@ -335,15 +448,20 @@ const drawTrendChart = (data) => {
 	const height = canvas.height - 60
 	const padding = 40
 
-	// 获取数据值
+	// 获取数据值 - 使用映射函数
 	const values = data.map(item => {
+		let mapped
+		if (target === 'user') {
+			mapped = mapStatFields(item)
+		} else {
+			mapped = mapStudioStatFields(item)
+		}
 		// 根据不同时间周期获取对应的值
 		if (timePeriod.value === 'daily') {
-			return item.attendanceCount || item.totalAttendance || 0
-		} else if (timePeriod.value === 'weekly' || timePeriod.value === 'monthly' || timePeriod.value === 'yearly') {
-			return item.attendanceRate || 0
+			return mapped.attendanceCount || 0
+		} else {
+			return mapped.attendanceRate || 0
 		}
-		return 0
 	})
 
 	if (values.length === 0) return

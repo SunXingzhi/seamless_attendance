@@ -98,8 +98,8 @@ public class DeviceBitmapService {
 
 			// 按设备名称排序（A1, A2, A3...）
 			devices.sort((d1, d2) -> {
-				String index1 = utilitySevice.separateLettersAndNumbers(d1.getDevice_name())[1];
-				String index2 = utilitySevice.separateLettersAndNumbers(d2.getDevice_name())[1];
+				String index1 = utilitySevice.separateLettersAndNumbers(d1.getDeviceName())[1];
+				String index2 = utilitySevice.separateLettersAndNumbers(d2.getDeviceName())[1];
 				return Integer.compare(Integer.parseInt(index1), Integer.parseInt(index2));
 			});
 

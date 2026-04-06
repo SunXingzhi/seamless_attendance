@@ -66,20 +66,20 @@ public class MqttMessageHandlerService {
                         List<userStatus> allUserStatuses = attendanceMapper.getAllUserStatuses();
 
                         for (userStatus status : allUserStatuses) {
-                                String userNumber = status.getUser_number();
-                                double workHours = status.getToday_work_hours();
+                                String userNumber = status.getUserNumber();
+                                double workHours = status.getTodayWorkHours();
 
                                 if (workHours > 0) {
                                         // 更新考勤记录，保存当天工作时间
                                         updateAttendanceRecord(userNumber, currentDate,
-                                                        status.getCheck_in_time(), status.getCheck_out_time(),
+                                                        status.getCheckInTime(), status.getCheckOutTime(),
                                                         workHours, "active");
 
                                         // 清零工作时间
-                                        status.setToday_work_hours(0.0);
-                                        status.setCheck_in_time(null);
-                                        status.setCheck_out_time(null);
-                                        status.setUpdate_time(LocalDateTime.now().format(DATETIME_FORMATTER));
+                                        status.setTodayWorkHours(0.0);
+                                        status.setCheckInTime(null);
+                                        status.setCheckOutTime(null);
+                                        status.setUpdateTime(LocalDateTime.now().format(DATETIME_FORMATTER));
                                         attendanceMapper.updateUserStatus(status);
 
                                         logger.info("Daily work hours summary for user {}: {} hours", userNumber,
@@ -225,7 +225,7 @@ public class MqttMessageHandlerService {
                                 // 如果没有现有状态，认为状态发生了改变
                                 return true;
                         }
-                        return !newStatus.equals(currentStatus.getCurrent_status());
+                        return !newStatus.equals(currentStatus.getCurrentStatus());
                 } catch (Exception e) {
                         logger.error("Error checking status change for user: {}", userNumber, e);
                         // 在发生错误时，默认认为状态发生了改变，以确保后续处理能够进行
@@ -293,7 +293,7 @@ public class MqttMessageHandlerService {
                                         logger.error("User number not found: {}", userNumber);
                                         return null;
                                 } else {
-                                        userNumber = userInfo.getUser_number();
+                                        userNumber = userInfo.getUserNumber();
                                         logger.info("Use username for get user information.");
                                 }
                         }
@@ -321,18 +321,18 @@ public class MqttMessageHandlerService {
                         if (currentStatus == null) {
                                 // 首次处理该用户
                                 currentStatus = new userStatus();
-                                currentStatus.setUser_number(userNumber);
+                                currentStatus.setUserNumber(userNumber);
 
                                 if (status == 1) {
                                         // 当前在线
-                                        currentStatus.setCurrent_status("active");
-                                        currentStatus.setLast_active_time(currentDateTime);
-                                        currentStatus.setLast_absent_time(null);
-                                        currentStatus.setToday_work_hours(0.0);
-                                        currentStatus.setCheck_in_time(currentTimeStr);
-                                        currentStatus.setCheck_out_time(null);
-                                        currentStatus.setCreate_time(currentDateTime);
-                                        currentStatus.setUpdate_time(currentDateTime);
+                                        currentStatus.setCurrentStatus("active");
+                                        currentStatus.setLastActiveTime(currentDateTime);
+                                        currentStatus.setLastAbsentTime(null);
+                                        currentStatus.setTodayWorkHours(0.0);
+                                        currentStatus.setCheckInTime(currentTimeStr);
+                                        currentStatus.setCheckOutTime(null);
+                                        currentStatus.setCreateTime(currentDateTime);
+                                        currentStatus.setUpdateTime(currentDateTime);
 
                                         // 添加用户状态
                                         attendanceMapper.addUserStatus(currentStatus);
@@ -342,14 +342,14 @@ public class MqttMessageHandlerService {
                                                         "active");
                                 } else {
                                         // 当前离线
-                                        currentStatus.setCurrent_status("absent");
-                                        currentStatus.setLast_active_time(null);
-                                        currentStatus.setLast_absent_time(currentDateTime);
-                                        currentStatus.setToday_work_hours(0.0);
-                                        currentStatus.setCheck_in_time(null);
-                                        currentStatus.setCheck_out_time(null);
-                                        currentStatus.setCreate_time(currentDateTime);
-                                        currentStatus.setUpdate_time(currentDateTime);
+                                        currentStatus.setCurrentStatus("absent");
+                                        currentStatus.setLastActiveTime(null);
+                                        currentStatus.setLastAbsentTime(currentDateTime);
+                                        currentStatus.setTodayWorkHours(0.0);
+                                        currentStatus.setCheckInTime(null);
+                                        currentStatus.setCheckOutTime(null);
+                                        currentStatus.setCreateTime(currentDateTime);
+                                        currentStatus.setUpdateTime(currentDateTime);
 
                                         // 添加用户状态
                                         attendanceMapper.addUserStatus(currentStatus);
@@ -357,20 +357,20 @@ public class MqttMessageHandlerService {
                                 }
                         } else {
                                 // 已存在用户状态
-                                String previousStatus = currentStatus.getCurrent_status();
+                                String previousStatus = currentStatus.getCurrentStatus();
 
                                 if (status == 1) {
                                         // 当前在线
                                         if ("absent".equals(previousStatus)) {
                                                 // 从离线变为在线
-                                                currentStatus.setCurrent_status("active");
-                                                currentStatus.setLast_active_time(currentDateTime);
-                                                currentStatus.setUpdate_time(currentDateTime);
+                                                currentStatus.setCurrentStatus("active");
+                                                currentStatus.setLastActiveTime(currentDateTime);
+                                                currentStatus.setUpdateTime(currentDateTime);
 
                                                 // 如果今天还没有打卡，记录打卡时间
-                                                if (currentStatus.getCheck_in_time() == null) {
+                                                if (currentStatus.getCheckInTime() == null) {
                                                         // TODO: 当后续增加任务处理时,可以查询该人员是否迟到
-                                                        currentStatus.setCheck_in_time(currentTimeStr);
+                                                        currentStatus.setCheckInTime(currentTimeStr);
                                                 }
 
                                                 // 更新用户状态
@@ -383,9 +383,9 @@ public class MqttMessageHandlerService {
                                         if ("active".equals(previousStatus)) {
                                                 // 从在线变为离线
                                                 // 计算工作时间
-                                                if (currentStatus.getLast_active_time() != null) {
+                                                if (currentStatus.getLastActiveTime() != null) {
                                                         LocalDateTime lastactiveTime = LocalDateTime.parse(
-                                                                        currentStatus.getLast_active_time(),
+                                                                        currentStatus.getLastActiveTime(),
                                                                         DATETIME_FORMATTER);
                                                         Duration duration = Duration.between(lastactiveTime,
                                                                         currentTime);
@@ -393,12 +393,12 @@ public class MqttMessageHandlerService {
                                                 }
 
                                                 // 更新用户状态
-                                                currentStatus.setCurrent_status("leave");
-                                                currentStatus.setLast_absent_time(currentDateTime);
-                                                currentStatus.setToday_work_hours(
-                                                                currentStatus.getToday_work_hours() + workHoursToAdd);
-                                                currentStatus.setCheck_out_time(currentTimeStr);
-                                                currentStatus.setUpdate_time(currentDateTime);
+                                                currentStatus.setCurrentStatus("leave");
+                                                currentStatus.setLastAbsentTime(currentDateTime);
+                                                currentStatus.setTodayWorkHours(
+                                                                currentStatus.getTodayWorkHours() + workHoursToAdd);
+                                                currentStatus.setCheckOutTime(currentTimeStr);
+                                                currentStatus.setUpdateTime(currentDateTime);
 
                                                 // 更新用户状态
                                                 attendanceMapper.updateUserStatus(currentStatus);
@@ -407,9 +407,9 @@ public class MqttMessageHandlerService {
                                                 userMapper.updateUserStatus(userNumber, "leave");
                                                 // 更新考勤记录
                                                 updateAttendanceRecord(userNumber, currentDate,
-                                                                currentStatus.getCheck_in_time(),
+                                                                currentStatus.getCheckInTime(),
                                                                 currentTimeStr,
-                                                                currentStatus.getToday_work_hours(),
+                                                                currentStatus.getTodayWorkHours(),
                                                                 "leave");
                                         }
                                         // 保持离线状态，不做操作
@@ -424,17 +424,17 @@ public class MqttMessageHandlerService {
                                 userMapper.updateUserInfo(
                                                 userInfo.getId(),
                                                 userInfo.getName(),
-                                                userInfo.getContact_type(),
-                                                userInfo.getContact_value(),
-                                                userInfo.getUser_number(),
+                                                userInfo.getContactType(),
+                                                userInfo.getContactValue(),
+                                                userInfo.getUserNumber(),
                                                 userInfo.getRole(),
-                                                userInfo.getJob_title(),
-                                                userInfo.getWork_content(),
-                                                userInfo.getStudio_id(),
+                                                userInfo.getJobTitle(),
+                                                userInfo.getWorkContent(),
+                                                userInfo.getStudioId(),
                                                 userInfo.getAvatar(),
                                                 userInfo.getStatus(),
-                                                userInfo.getJoin_date(),
-                                                userInfo.getDevice_id());
+                                                userInfo.getJoinDate(),
+                                                userInfo.getDeviceId());
                         }
 
                         // // 发送WebSocket消息到前端
@@ -455,25 +455,49 @@ public class MqttMessageHandlerService {
                                         date);
                         String currentTime = LocalDateTime.now().format(DATETIME_FORMATTER);
 
+                        // 提取时间部分（如果字符串包含空格，则提取空格后的部分）
+                        String timePartIn = null;
+                        if (checkInTime != null) {
+                                if (checkInTime.contains(" ")) {
+                                        String[] parts = checkInTime.split(" ");
+                                        timePartIn = parts.length >= 2 ? parts[1] : checkInTime;
+                                } else {
+                                        timePartIn = checkInTime;
+                                }
+                        }
+                        String timePartOut = null;
+                        if (checkOutTime != null) {
+                                if (checkOutTime.contains(" ")) {
+                                        String[] parts = checkOutTime.split(" ");
+                                        timePartOut = parts.length >= 2 ? parts[1] : checkOutTime;
+                                } else {
+                                        timePartOut = checkOutTime;
+                                }
+                        }
+
+                        // 构建完整的日期时间字符串
+                        String fullCheckInTime = timePartIn != null ? date + " " + timePartIn : null;
+                        String fullCheckOutTime = timePartOut != null ? date + " " + timePartOut : null;
+
                         if (record == null) {
                                 // 添加新记录
                                 record = new attendanceRecord();
-                                record.setUser_number(userNumber);
+                                record.setUserNumber(userNumber);
                                 record.setDate(date);
-                                record.setCheck_in_time(checkInTime);
-                                record.setCheck_out_time(checkOutTime);
-                                record.setWork_hours(workHours);
+                                record.setCheckInTime(fullCheckInTime);
+                                record.setCheckOutTime(fullCheckOutTime);
+                                record.setWorkHours(workHours);
                                 record.setStatus(status);
-                                record.setCreate_time(currentTime);
-                                record.setUpdate_time(currentTime);
+                                record.setCreateTime(currentTime);
+                                record.setUpdateTime(currentTime);
                                 attendanceMapper.addAttendanceRecord(record);
                         } else {
                                 // 更新现有记录
-                                record.setCheck_in_time(checkInTime);
-                                record.setCheck_out_time(checkOutTime);
-                                record.setWork_hours(workHours);
+                                record.setCheckInTime(fullCheckInTime);
+                                record.setCheckOutTime(fullCheckOutTime);
+                                record.setWorkHours(workHours);
                                 record.setStatus(status);
-                                record.setUpdate_time(currentTime);
+                                record.setUpdateTime(currentTime);
                                 attendanceMapper.updateAttendanceRecord(record);
                         }
                 } catch (Exception e) {

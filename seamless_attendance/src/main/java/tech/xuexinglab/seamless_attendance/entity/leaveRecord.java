@@ -9,12 +9,12 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 public class leaveRecord {
         Integer id;
-        String user_number; // 用户工号
-        String start_date; // 开始日期，格式：yyyy-MM-dd
-        String end_date; // 结束日期，格式：yyyy-MM-dd
-        String leave_type; // 请假类型：sick(病假), personal(事假), annual(年假)
+        String userNumber; // 用户工号
+        String startDate; // 开始日期，格式：yyyy-MM-dd
+        String endDate; // 结束日期，格式：yyyy-MM-dd
+        String leaveType; // 请假类型：sick(病假), personal(事假), annual(年假)
         String reason; // 请假原因
         String status; // 状态：approved(已批准), pending(待批准), rejected(已拒绝)
-        String create_time;
-        String update_time;
+        String createTime;
+        String updateTime;
 }

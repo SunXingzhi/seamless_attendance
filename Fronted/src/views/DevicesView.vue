@@ -37,7 +37,7 @@
 							<template v-if="typeof device.personnels === 'object'">
 								<template v-for="(personnel, key) in device.personnels">
 									<span v-if="personnel.is_active" :key="key" class="personnel-tag">
-										{{ personnel.user_number }}
+										{{ personnel.userNumber }}
 									</span>
 								</template>
 							</template>
@@ -84,7 +84,7 @@
 								<button v-if="deviceForm.personnels[personnelKey]?.is_active" @click.prevent="removePerson(personnelKey)" class="remove-person-btn">解除</button>
 							</div>
 							<div class="person-pairing-content">
-								<input type="text" :value="deviceForm.personnels[personnelKey]?.user_number || '未绑定人员'" 
+								<input type="text" :value="deviceForm.personnels[personnelKey]?.userNumber || '未绑定人员'" 
 									disabled class="person-input" />
 								<button @click.prevent="openPersonModal(personnelKey)" class="pair-btn">
 									{{ deviceForm.personnels[personnelKey]?.is_active ? '重新配对' : '配对' }}
@@ -284,9 +284,9 @@ const deviceForm = ref({
 	device_name: '',
 	device_id: '',
 	personnels: {
-		personnel1: { is_active: false, user_number: '' },
-		personnel2: { is_active: false, user_number: '' },
-		personnel3: { is_active: false, user_number: '' }
+		personnel1: { is_active: false, userNumber: '' },
+		personnel2: { is_active: false, userNumber: '' },
+		personnel3: { is_active: false, userNumber: '' }
 	}
 })
 
@@ -358,9 +358,9 @@ const resetForm = () => {
 		device_name: '',
 		device_id: '',
 		personnels: {
-			personnel1: { is_active: false, user_number: '' },
-			personnel2: { is_active: false, user_number: '' },
-			personnel3: { is_active: false, user_number: '' }
+			personnel1: { is_active: false, userNumber: '' },
+			personnel2: { is_active: false, userNumber: '' },
+			personnel3: { is_active: false, userNumber: '' }
 		}
 	}
 }
@@ -369,9 +369,9 @@ const editDevice = (device) => {
 	editingDeviceId.value = device.id
 	// Convert comma-separated string to personnel object
 	let personnelsObject = {
-		personnel1: { is_active: false, user_number: '' },
-		personnel2: { is_active: false, user_number: '' },
-		personnel3: { is_active: false, user_number: '' }
+		personnel1: { is_active: false, userNumber: '' },
+		personnel2: { is_active: false, userNumber: '' },
+		personnel3: { is_active: false, userNumber: '' }
 	}
 	
 	if (device.personnels) {
@@ -384,7 +384,7 @@ const editDevice = (device) => {
 				if (index < 3) {
 					personnelsObject[`personnel${index + 1}`] = {
 						is_active: true,
-						user_number: userNumber
+						userNumber: userNumber
 					}
 				}
 			})
@@ -524,7 +524,7 @@ const confirmPersonSelection = () => {
 
 	deviceForm.value.personnels[personnelKey] = {
 		is_active: false,
-		user_number: personToPair.userNumber
+		userNumber: personToPair.userNumber
 	}
 
 	closePersonModal()
@@ -610,7 +610,7 @@ const handlePairingComplete = async (pairingData) => {
 	for (const key in pairingStatuses) {
 		if (pairingStatuses[key].status === 'pairing') {
 			const [, personnelKey] = key.split(',')
-			userNumber = deviceForm.value.personnels[personnelKey]?.user_number
+			userNumber = deviceForm.value.personnels[personnelKey]?.userNumber
 
 			if (userNumber) {
 				targetPersonnelKey = personnelKey
@@ -716,7 +716,7 @@ const closePairingSuccessModal = () => {
 
 const removePerson = async (personnelKey) => {
 	if (confirm('确定要解除该人员绑定吗？')) {
-		const userNumber = deviceForm.value.personnels[personnelKey]?.user_number
+		const userNumber = deviceForm.value.personnels[personnelKey]?.userNumber
 		if (userNumber) {
 			try {
 				await mqttService.unassignPerson(editingDeviceId.value || 0, userNumber)
@@ -728,7 +728,7 @@ const removePerson = async (personnelKey) => {
 		}
 		deviceForm.value.personnels[personnelKey] = {
 			is_active: false,
-			user_number: ''
+			userNumber: ''
 		}
 		const key = `0,${personnelKey}`
 		if (pairingStatuses[key]) {
@@ -745,14 +745,14 @@ const submitDevice = async () => {
 		const personnelNames = []
 		for (let i = 1; i <= 3; i++) {
 			const personnel = deviceForm.value.personnels[`personnel${i}`]
-			if (personnel && personnel.is_active && personnel.user_number) {
-				// Find the personnel name by user_number
-				const personInfo = availablePersons.value.find(p => p.userNumber === personnel.user_number)
+			if (personnel && personnel.is_active && personnel.userNumber) {
+				// Find the personnel name by userNumber
+				const personInfo = availablePersons.value.find(p => p.userNumber === personnel.userNumber)
 				if (personInfo && personInfo.userName) {
 					personnelNames.push(personInfo.userName)
 				} else {
-					// Fallback: use user_number if name not found
-					personnelNames.push(personnel.user_number)
+					// Fallback: use userNumber if name not found
+					personnelNames.push(personnel.userNumber)
 				}
 			}
 		}

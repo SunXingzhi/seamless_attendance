@@ -11,17 +11,17 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class workTask {
         private Integer id;
-        private String task_name;
-        private String task_type;
-        private Integer studio_id;
+        private String taskName;
+        private String taskType;
+        private Integer studioId;
         private Integer priority;
-        private String task_description;
-        private LocalDateTime start_date;
-        private LocalDateTime end_date;
-        private Integer estimated_time;
-        private Integer actual_time;
+        private String taskDescription;
+        private LocalDateTime startDate;
+        private LocalDateTime endDate;
+        private Integer estimatedTime;
+        private Integer actualTime;
         private String status; // 0:未开始, 1:进行中, 2:已完成, 3:已取消
-        private LocalDateTime create_time;
-        private LocalDateTime update_time;
+        private LocalDateTime createTime;
+        private LocalDateTime updateTime;
 
 }

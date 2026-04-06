@@ -103,20 +103,20 @@ public class userServiceImplement implements userService {
 		List<attendanceRecord> attendanceRecords = userMapper.getUserAttendanceRecord();
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 		for (attendanceRecord record : attendanceRecords) {
-			if (record.getCheck_in_time() != null && record.getCheck_out_time() != null) {
+			if (record.getCheckInTime() != null && record.getCheckOutTime() != null) {
 				try {
-					LocalDateTime checkIn = LocalDateTime.parse(record.getCheck_in_time(),
+					LocalDateTime checkIn = LocalDateTime.parse(record.getCheckInTime(),
 							formatter);
-					LocalDateTime checkOut = LocalDateTime.parse(record.getCheck_out_time(),
+					LocalDateTime checkOut = LocalDateTime.parse(record.getCheckOutTime(),
 							formatter);
 					long hours = java.time.Duration.between(checkIn, checkOut).toHours();
-					record.setWork_hours((double) hours);
+					record.setWorkHours((double) hours);
 
 				} catch (Exception e) {
-					record.setWork_hours(0.0);
+					record.setWorkHours(0.0);
 				}
 			} else {
-				record.setWork_hours(0.0);
+				record.setWorkHours(0.0);
 			}
 		}
 		return attendanceRecords;
