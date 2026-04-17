@@ -42,6 +42,9 @@ export const useStudioStore = defineStore('studio', {
 					this.studioList = []
 					return
 				}
+				if (this.studioList.length > 0) {
+					await this.fetchStudioAttendanceForAll()
+				}
 			} catch (error) {
 				this.error = error.message
 				console.error('获取工作室列表失败:', error)
@@ -50,20 +53,31 @@ export const useStudioStore = defineStore('studio', {
 				this.loading = false
 			}
 		},
+
+		async fetchStudioAttendanceForAll() {
+			const promises = this.studioList.map(studio =>
+				this.fetchStudioAttendance(studio.id).catch(error => {
+					console.error(`加载工作室 ${studio.id} 考勤失败:`, error)
+				})
+			)
+			await Promise.all(promises)
+		},
 		
 		// 转换工作室数据格式
 		transformStudioData(data) {
 			return {
 				id: data.id,
-				name: data.studio_name || data.name,
-				code: data.studio_code || data.code,
+				name: data.studioName || data.studio_name || data.name,
+				studioName: data.studioName || data.studio_name || data.name,
+				code: data.studioCode || data.studio_code || data.code,
+				studioCode: data.studioCode || data.studio_code || data.code,
 				description: data.description || '',
 				personnels: data.personnels || data.personnel || '',
-				presentCount: data.member_count || data.presentCount || 0,
-				totalCount: data.max_member_count || data.totalCount || 0,
-				adminName: data.admin_name || data.adminName,
-				adminUserNumber: data.admin_user_number || data.adminUserNumber,
-				adminContact: data.admin_contact || data.adminContact,
+				presentCount: data.member_count || data.memberCount || data.present_count || data.presentCount || 0,
+				totalCount: data.max_member_count || data.maxMemberCount || data.total_count || data.totalCount || 0,
+				adminName: data.admin_name || data.adminName || '',
+				adminUserNumber: data.admin_user_number || data.adminUserNumber || '',
+				adminContact: data.admin_contact || data.adminContact || data.admin_user_number || data.adminUserNumber || '',
 				isNew: false,
 				absentPersons: data.absent_persons || data.absentPersons || [],
 				presentPersons: data.present_persons || data.presentPersons || []

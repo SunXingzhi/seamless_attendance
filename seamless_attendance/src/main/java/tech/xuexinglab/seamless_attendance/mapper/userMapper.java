@@ -89,7 +89,7 @@ public interface userMapper {
                                           @Param("pairingStatus") String pairingStatus, 
                                           @Param("deviceId") Integer deviceId);
         
-        // 检查人员是否已与其他设备绑定
+        // 检查人员是否已与其他设备绑定 没有返回0, 有返回1
         @Select("select count(*) from user where user_number = #{userNumber} and pairing_status = 'paired' and device_id != #{deviceId}")
         public int checkUserPaired(@Param("userNumber") String userNumber, @Param("deviceId") Integer deviceId);
         

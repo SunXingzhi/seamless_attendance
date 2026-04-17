@@ -79,24 +79,17 @@ public class MqttPushCallback implements MqttCallback {
                 logger.info("Received message. topic={}, payload={}", topic, payload);
 
                 try {
+                        // 获取设备ID(设备名称)
+                        deviceId = jsonObject.getString("ID");
+                        if ((deviceId == null || deviceId.isEmpty()) || payload.isEmpty()) {
+                                logger.warn("Invalid message format. Skipping processing.");
+                                return;
+                        }
+
                         // 根据不同主题解析
                         if (topic.equals(mqttProperties.subscribeTopic)) {
                                 
-				// 处理状态更新消息
-                                // 解析payload获取设备ID
-                                if (payload != null && !payload.isEmpty()
-                                                && payload.contains("ID")) {
-                                        int startIndex = payload.indexOf("ID") + 4;
-                                        int endIndex = payload.indexOf(",", startIndex);
-                                        if (endIndex == -1)
-                                                endIndex = payload.indexOf("}", startIndex);
-                                        if (startIndex > 3 && endIndex > startIndex) {
-                                                deviceId = payload
-                                                                .substring(startIndex, endIndex)
-                                                                .replaceAll("\\\"", "").trim();
-                                                logger.info("Parsed device ID: {}", deviceId);
-                                        }
-                                }
+				
                                 // 调用硬件消息处理器处理状态消息
                                 if (hardwareMessageHandler != null) {
                                         hardwareMessageHandler.handleStatusMessage(deviceId,
@@ -116,8 +109,6 @@ public class MqttPushCallback implements MqttCallback {
                                                         && payload.contains("ID")
 							&& payload.contains("status")) {
 
-						// 解析payload获取设备ID
-						deviceId	= jsonObject.getString("ID");
 						// 获取feedback状态
 						feedBackStatus = jsonObject.getString("status");
 						logger.info("Parsed device ID: {}, feedback status: {}",

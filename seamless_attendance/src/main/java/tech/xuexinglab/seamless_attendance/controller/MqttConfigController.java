@@ -168,6 +168,7 @@ public class MqttConfigController {
         }
 
         // 恢复设备出厂设置
+        // TODO 还需要添加清屏逻辑
         @PostMapping("/fullreset")
         public ResponseDTO<String> fullReset(@RequestBody deviceDTO dto) {
                 // TODO: process POST request

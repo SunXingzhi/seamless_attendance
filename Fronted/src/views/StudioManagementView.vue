@@ -27,8 +27,8 @@
 				:class="{ 'new-studio': studio.isNew }"
 			>
 				<div class="studio-header">
-					<h3 class="studio-name">{{ studio.name }}</h3>
-					<span class="studio-code">工作室代码: {{ studio.code }}</span>
+					<h3 class="studio-name">{{ studio.name || studio.studioName }}</h3>
+					<span class="studio-code">工作室代码: {{ studio.code || studio.studioCode }}</span>
 				</div>
 
 				<div class="studio-info">

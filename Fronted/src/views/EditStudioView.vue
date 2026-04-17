@@ -105,6 +105,7 @@ const studioForm = reactive({
 })
 
 onMounted(async () => {
+        
 	await Promise.all([
 		loadStudioData(),
 		loadPersonnel()
@@ -119,6 +120,7 @@ const loadStudioData = async () => {
 		
 		// 从store获取工作室详情
 		const studio = studioStore.getStudioById(studioId.value)
+                console.log('从store获取的工作室数据:', studio)
 		if (studio) {
 			// 填充表单
 			studioForm.studio_name = studio.name

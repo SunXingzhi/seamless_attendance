@@ -141,6 +141,7 @@ public class MqttMessageHandlerService {
 
                 String result_status = "absent"; // 默认状态
 
+                // 如果根据设备没有找到任何人员, 则不处理状态更新, 直接返回
                 if (personnelNumbers == null || personnelNumbers.isEmpty()) {
                         logger.warn("No personnel numbers provided for device, skipping status update");
                         return;
@@ -243,10 +244,10 @@ public class MqttMessageHandlerService {
                                         data    = 1;
                                         break;
                                 case "absent":
-                                        data    = 2;
+                                        data    = 3;
                                         break;
                                 case "active":
-                                        data    = 3;
+                                        data    = 2;
                                         break;
                                 
                                 case "excused":

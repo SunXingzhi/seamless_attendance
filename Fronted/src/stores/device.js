@@ -62,7 +62,7 @@ export const useDeviceStore = defineStore('device', {
 			const deviceId = data.id || Date.now()
 			return {
 				id: deviceId,
-				deviceName: data.device_name || data.name || '未命名设备',
+				deviceName: data.deviceName || data.name || '未命名设备',
 				// deviceId字段已废弃，使用id作为设备主键
 				// 保留deviceId字段用于兼容，但设置为与id相同
 				deviceId: deviceId,

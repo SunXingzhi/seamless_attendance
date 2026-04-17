@@ -75,6 +75,7 @@ public class deviceServiceImplement implements deviceService {
 		return deviceMapper.updateDevice(device);
 	}
 
+        // ID为设备名称
 	@Override
 	public int deleteDevice(Integer id) {
 		try {
