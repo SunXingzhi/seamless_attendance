@@ -55,6 +55,14 @@ public interface deviceMapper {
 	@Select("SELECT IFNULL(MAX(id), 0) FROM device")
 	int getMaxDeviceId();
 
+        // 获取字模发送状态
+        @Select("SELECT font_sent FROM device WHERE device_name = #{deviceName}")
+        Boolean getFontSent(@Param("deviceName") String deviceName);
+
+        // 更新字模发送状态
+        @Update("UPDATE device SET font_sent = #{fontSent}, update_time = NOW() WHERE device_name = #{deviceName}")
+        int updateFontSent(@Param("deviceName") String deviceName, @Param("fontSent") Boolean fontSent);
+        
 	// 重置设备表自增计数器
 	@Update("ALTER TABLE device AUTO_INCREMENT = #{value}")
 	int resetDeviceAutoIncrement(@Param("value") int value);

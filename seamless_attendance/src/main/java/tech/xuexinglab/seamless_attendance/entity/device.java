@@ -17,6 +17,7 @@ public class device {
         private String deviceName;
         private String originDeviceName;
         private String deviceId;
+        private Boolean fontSent;
         private String studioCodes;
         private String personnels;
         private String status;

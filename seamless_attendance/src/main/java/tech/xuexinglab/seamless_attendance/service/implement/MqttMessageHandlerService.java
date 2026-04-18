@@ -112,6 +112,13 @@ public class MqttMessageHandlerService {
                                 return;
                         }
 
+                        // 判断字模数据是否发送, 如果没有发送, 则不处理状态更新
+                        boolean fontSent = deviceMapper.getFontSent(deviceInfo.getDeviceName());
+                        if (!fontSent) {
+                                logger.warn("Device {} has not sent bitmap data, skipping status update", deviceInfo.getDeviceName());
+                                return;
+                        }
+
                         // 解析设备的人员列表
                         List<String> personnelNumbers = parsePersonnelNumbers(deviceInfo.getPersonnels());
                         if (personnelNumbers == null || personnelNumbers.isEmpty()) {

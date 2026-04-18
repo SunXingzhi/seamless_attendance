@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import tech.xuexinglab.seamless_attendance.DTO.ResponseDTO;
 import tech.xuexinglab.seamless_attendance.DTO.deviceDTO;
 import tech.xuexinglab.seamless_attendance.entity.device;
+import tech.xuexinglab.seamless_attendance.mapper.deviceMapper;
 import tech.xuexinglab.seamless_attendance.service.interfaces.deviceService;
 import tech.xuexinglab.seamless_attendance.service.GetFontsBitmapService;
 import tech.xuexinglab.seamless_attendance.service.DeviceBitmapService;
@@ -31,6 +32,9 @@ public class deviceController {
 
 	@Autowired
 	private DeviceBitmapService deviceBitmapService;
+
+	@Autowired
+	private deviceMapper DeviceMapper;
 
 	private static final Logger logger = LoggerFactory.getLogger(deviceController.class);
 
@@ -55,6 +59,9 @@ public class deviceController {
 	@PostMapping("/devices")
 	public ResponseDTO<String> addDevice(@RequestBody deviceDTO deviceDTO) {
 		int result = deviceService.addDevice(deviceDTO);
+                // 重置字模发送状态为未发送, 避免重复发送
+                DeviceMapper.updateFontSent(deviceDTO.getDevice_name(), false);
+
 		if (result > 0) {
 			// 如果绑定了人员，为每个人员生成字模并发送到 MQTT（异步执行，避免阻塞响应）
 			if (deviceDTO.getPersonnels() != null && !deviceDTO.getPersonnels().isEmpty()) {
@@ -70,6 +77,9 @@ public class deviceController {
 										personnelName.trim(), deviceIndex);
 							}
 						}
+                                                 // 更新设备字模发送状态为已发送
+						DeviceMapper.updateFontSent(deviceDTO.getDevice_name(), true);
+
 						logger.info("设备字模异步发送完成，设备名称: {}", deviceDTO.getDevice_name());
 					} catch (Exception e) {
 						logger.error("设备字模异步发送失败，设备名称: {}", deviceDTO.getDevice_name(), e);
@@ -115,6 +125,12 @@ public class deviceController {
 										personnelName.trim(), deviceIndex);
 							}
 						}
+                                                 // 更新设备字模发送状态为已发送
+						DeviceMapper.updateFontSent(deviceDTO.getDevice_name(), true);
+						// // 重置设备索引
+						// deviceService.resetDeviceIndex();
+						// // 重置设备表自增计数器
+						// deviceService.resetDeviceAutoIncrement();
 						logger.info("设备字模异步发送完成，设备名称: {}", deviceDTO.getDevice_name());
 					} catch (Exception e) {
 						logger.error("设备字模异步发送失败，设备名称: {}", deviceDTO.getDevice_name(), e);
