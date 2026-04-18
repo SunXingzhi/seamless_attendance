@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import tech.xuexinglab.seamless_attendance.service.interfaces.userService;
 import tech.xuexinglab.seamless_attendance.DTO.userDTO;
 import tech.xuexinglab.seamless_attendance.DTO.ResponseDTO;
+import tech.xuexinglab.seamless_attendance.DTO.UserResponseDTO;
 import tech.xuexinglab.seamless_attendance.entity.user;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/seamless_attendance/api/personnel")
 public class userController {
@@ -22,13 +24,19 @@ public class userController {
 	private userService userService;
 
 	@GetMapping("users/all")
-	public ResponseDTO<List<user>> getAllUserInfo() {
-		return ResponseDTO.success(userService.getAllUserInfo());
+	public ResponseDTO<List<UserResponseDTO>> getAllUserInfo() {
+		List<user> users = userService.getAllUserInfo();
+		List<UserResponseDTO> userResponseDTOs = users.stream()
+				.map(this::convertToResponseDTO)
+				.collect(Collectors.toList());
+		return ResponseDTO.success(userResponseDTOs);
 	}
 
 	@GetMapping("getUserInfo/{userId}")
-	public ResponseDTO<user> getUserInfo(@PathVariable long userId) {
-		return ResponseDTO.success(userService.getUserInfoById((int) userId));
+	public ResponseDTO<UserResponseDTO> getUserInfo(@PathVariable long userId) {
+		user user = userService.getUserInfoById((int) userId);
+		UserResponseDTO userResponseDTO = convertToResponseDTO(user);
+		return ResponseDTO.success(userResponseDTO);
 	}
 
         // 添加人员信息
@@ -40,11 +48,13 @@ public class userController {
 
         // 更新人员信息
         @PutMapping("user/info/{id}")
-        public ResponseDTO<user> updateUserInfo(@PathVariable long id, @RequestBody userDTO userDTO) {
+        public ResponseDTO<UserResponseDTO> updateUserInfo(@PathVariable long id, @RequestBody userDTO userDTO) {
                 userDTO.setUserId((int) id);
                 userService.updateUserInfo(userDTO);
                 // 获取用户新的信息
-                return ResponseDTO.success(userService.getUserInfoByUserNumber(userDTO.getUser_number()));
+                user user = userService.getUserInfoByUserNumber(userDTO.getUser_number());
+                UserResponseDTO userResponseDTO = convertToResponseDTO(user);
+                return ResponseDTO.success(userResponseDTO);
         }
 
         // 查看人员考勤记录
@@ -59,5 +69,32 @@ public class userController {
         public ResponseDTO<String> deleteUserInfo(@PathVariable long id) {
                 userService.deleteUserInfo((int) id);
                 return ResponseDTO.success("该用户信息删除成功");
+        }
+        
+        // 将user实体转换为UserResponseDTO
+        private UserResponseDTO convertToResponseDTO(user user) {
+                if (user == null) {
+                        return null;
+                }
+                return new UserResponseDTO(
+                        user.getId(),
+                        user.getUserNumber(),
+                        user.getUserName(),
+                        user.getName(),
+                        user.getContactType(),
+                        user.getContactValue(),
+                        user.getRole(),
+                        user.getJobTitle(),
+                        user.getWorkContent(),
+                        user.getStudioId(),
+                        user.getStudioAdminId(),
+                        user.getAvatar(),
+                        user.getStatus(),
+                        user.getPairingStatus(),
+                        user.getDeviceId(),
+                        user.getJoinDate(),
+                        user.getCreateTime(),
+                        user.getUpdateTime()
+                );
         }
 }

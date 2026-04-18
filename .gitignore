@@ -1,2 +1,5 @@
 github_MECHREV
 github_MECHREV.pub
+nginx.conf
+seamless-attendance.service
+mqtt_data
