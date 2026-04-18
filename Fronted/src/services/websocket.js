@@ -13,7 +13,7 @@ class WebSocketService {
 	}
 
 	// 连接WebSocket
-	connect(url = 'http://localhost:8082/ws') {
+	connect(url = '/seamless_attendance/ws') {
 		return new Promise((resolve, reject) => {
 			try {
 				// 创建SockJS连接

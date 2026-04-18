@@ -27,7 +27,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // 注册WebSocket端点，支持SockJS，并添加CORS支持
-        registry.addEndpoint("/ws")
+        registry.addEndpoint("/seamless_attendance/ws")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
