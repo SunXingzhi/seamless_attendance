@@ -9,7 +9,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import tech.xuexinglab.seamless_attendance.DTO.deviceDTO;
 import tech.xuexinglab.seamless_attendance.configuration.MqttProperties;
 import tech.xuexinglab.seamless_attendance.entity.device;
+import tech.xuexinglab.seamless_attendance.entity.user;
 import tech.xuexinglab.seamless_attendance.mapper.deviceMapper;
+import tech.xuexinglab.seamless_attendance.mapper.userMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.*;
@@ -28,6 +30,9 @@ public class DeviceBitmapService {
 	private deviceMapper deviceMapper;
 
 	@Autowired
+	private userMapper userMapper;
+
+	@Autowired
 	private utilitySevice utilitySevice;
 
 	private final RestTemplate restTemplate = new RestTemplate();
@@ -41,24 +46,36 @@ public class DeviceBitmapService {
 
 	/**
 	 * 处理设备人员字模生成和发送
-	 * 
-	 * @param originDeviceName 
-	 * @param personnelName    
+	 *
+	 * @param originDeviceName
+	 * @param personnelNameOrNumber  人员工号（现在前端发送的是工号）
 	 */
-	public void processDevicePersonnelBitmap(String originDeviceName, String personnelName, int device_index) {
+	public void processDevicePersonnelBitmap(String originDeviceName, String personnelNameOrNumber, int device_index) {
 		try {
-			logger.info("开始处理设备人员字模: originDeviceName={}, personnelName={}", originDeviceName,
-					personnelName);
+			logger.info("开始处理设备人员字模: originDeviceName={}, personnel={}", originDeviceName,
+					personnelNameOrNumber);
 
-			// 1. 计算 INDEX
-			int index = calculatePersonnelIndex(originDeviceName, personnelName, device_index);
+			// 0. 判断传入的是工号还是姓名，并获取对应的姓名
+			String personnelName = personnelNameOrNumber;
+			user user = userMapper.getUserInfoByUserNumber(personnelNameOrNumber);
+			if (user != null && user.getName() != null && !user.getName().isEmpty()) {
+				// 传入的是工号，查询到对应的姓名
+				personnelName = user.getName();
+				logger.info("通过工号 {} 查询到对应姓名: {}", personnelNameOrNumber, personnelName);
+			} else {
+				// 传入的可能就是姓名，直接使用
+				logger.info("直接使用姓名: {}", personnelName);
+			}
+
+			// 1. 计算 INDEX（使用工号来匹配）
+			int index = calculatePersonnelIndex(originDeviceName, personnelNameOrNumber, device_index);
 			if (index == -1) {
-				logger.error("计算 INDEX 失败: originDeviceName={}, personnelName={}", originDeviceName,
-						personnelName);
+				logger.error("计算 INDEX 失败: originDeviceName={}, personnel={}", originDeviceName,
+						personnelNameOrNumber);
 				return;
 			}
 
-			// 2. 调用 Python 服务获取字模数据
+			// 2. 调用 Python 服务获取字模数据（使用姓名）
 			String hexData = getBitmapFromPythonService(originDeviceName, personnelName);
 			if (hexData == null || hexData.isEmpty()) {
 				logger.warn("Python 服务不可用，使用模拟字模数据");
@@ -76,7 +93,7 @@ public class DeviceBitmapService {
 			// 4. 发送分片数据到 MQTT
 			sendBitmapPartsToMqtt(originDeviceName, index, personnelName, dataParts);
 
-			logger.info("设备人员字模处理完成: originDeviceName={}, personnelName={}, index={}",
+			logger.info("设备人员字模处理完成: originDeviceName={}, personnel={}, index={}",
 					originDeviceName, personnelName, index);
 
 		} catch (Exception e) {
@@ -86,8 +103,9 @@ public class DeviceBitmapService {
 
 	/**
 	 * 计算人员在设备中的 INDEX
+	 * 现在使用工号来匹配人员
 	 */
-	private int calculatePersonnelIndex(String originDeviceName, String personnelName, int device_index) {
+	private int calculatePersonnelIndex(String originDeviceName, String personnelUserNumber, int device_index) {
 		try {
 			// 获取所有以该原始设备名称开头的设备
 			List<device> devices = deviceMapper.getDevicesByOriginName(originDeviceName);
@@ -112,10 +130,10 @@ public class DeviceBitmapService {
 					// 解析人员列表
 					List<String> personnelList = parsePersonnelList(personnels);
 
-					// 在当前设备中查找目标人员
+					// 在当前设备中查找目标人员（使用工号匹配）
 					for (int i = 0; i < personnelList.size(); i++) {
 						String currentPersonnel = personnelList.get(i);
-						if (currentPersonnel.equals(personnelName)) {
+						if (currentPersonnel.equals(personnelUserNumber)) {
 							return globalIndex;
 						}
 						globalIndex++;
@@ -123,7 +141,7 @@ public class DeviceBitmapService {
 				}
 			}
 
-			logger.warn("未找到人员 {} 在设备 {} 中的分配", personnelName, originDeviceName);
+			logger.warn("未找到工号 {} 在设备 {} 中的分配", personnelUserNumber, originDeviceName);
 			return -1;
 
 		} catch (Exception e) {

@@ -740,28 +740,21 @@ const removePerson = async (personnelKey) => {
 const submitDevice = async () => {
 	submitting.value = true
 	try {
-		// Convert personnel object to comma-separated string for backend
-		// Now sending personnel names instead of user numbers
-		const personnelNames = []
+		// 将人员工号转换为逗号分隔的字符串发送到后端
+		const personnelUserNumbers = []
 		for (let i = 1; i <= 3; i++) {
 			const personnel = deviceForm.value.personnels[`personnel${i}`]
 			if (personnel && personnel.is_active && personnel.userNumber) {
-				// Find the personnel name by userNumber
-				const personInfo = availablePersons.value.find(p => p.userNumber === personnel.userNumber)
-				if (personInfo && personInfo.userName) {
-					personnelNames.push(personInfo.userName)
-				} else {
-					// Fallback: use userNumber if name not found
-					personnelNames.push(personnel.userNumber)
-				}
+				// 直接使用userNumber（工号）
+				personnelUserNumbers.push(personnel.userNumber)
 			}
 		}
-		
+
 		const backendData = {
 			...deviceForm.value,
-			personnels: personnelNames.join(',')
+			personnels: personnelUserNumbers.join(',')
 		}
-		
+
 		if (editingDeviceId.value) {
 			await deviceStore.updateDevice(editingDeviceId.value, backendData)
 			alert('设备更新成功')

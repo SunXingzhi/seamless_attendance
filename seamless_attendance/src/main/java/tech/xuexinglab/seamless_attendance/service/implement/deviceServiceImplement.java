@@ -104,12 +104,20 @@ public class deviceServiceImplement implements deviceService {
 			if (personnels != null && !personnels.trim().isEmpty()) {
 				List<String> personnelList = Arrays.asList(personnels.split(","));
 				for (String personnel : personnelList) {
-					String userNumber = (userMapper.getUserInfoByName(personnel.trim())).getUserNumber();
-					if (userNumber != null) {
-						// 解除人员与设备的配对关系
-						userMapper.updateUserPairingStatus(userNumber, "unpaired", null);
-						// 清除人员的device_id字段
-						userMapper.updateUserDeviceId(userNumber, null);
+					String userNumber = personnel.trim();
+					try {
+						// 现在personnel存储的是工号，直接使用
+						if (userNumber != null && !userNumber.isEmpty()) {
+							// 解除人员与设备的配对关系
+							userMapper.updateUserPairingStatus(userNumber, "unpaired", null);
+							// 清除人员的device_id字段
+							userMapper.updateUserDeviceId(userNumber, null);
+							// 清除user_status表中的设备对应人员状态为缺勤
+							userMapper.updateUserStatus(userNumber, "absent");
+						}
+					} catch (Exception e) {
+						logger.warn("Failed to update user status for {}: {}", userNumber, e.getMessage());
+						// 继续处理下一个人员，不因为单个人员处理失败而中止
 					}
 				}
 			}
@@ -144,6 +152,8 @@ public class deviceServiceImplement implements deviceService {
 				}
 			}
 			
+
+                        
 			return result;
 		} catch (Exception e) {
 			logger.error("Error deleting device id: {}", id, e);
@@ -246,17 +256,20 @@ public class deviceServiceImplement implements deviceService {
                                 return true; // 设备没有绑定人员，无需清除
                         }
 
-                        // 根据人名信息获取人员编号(学号)
+                        // 现在personnel存储的是工号，直接使用
                         personnelList   =  Arrays.asList(personnels.split(","));
                         for(String personnel : personnelList) {
-                                String userNumber = (userMapper.getUserInfoByName(personnel.trim())).getUserNumber();
-                                if(userNumber != null) {
-                                        // 解除人员与设备的配对关系
-                                        userMapper.updateUserPairingStatus(userNumber, "unpaired", null);
-                                        // 清除人员的device_id字段
-                                        userMapper.updateUserDeviceId(userNumber, null);
-                                } else{
-                                        return false;
+                                String userNumber = personnel.trim();
+                                try {
+                                        if(userNumber != null && !userNumber.isEmpty()) {
+                                                // 解除人员与设备的配对关系
+                                                userMapper.updateUserPairingStatus(userNumber, "unpaired", null);
+                                                // 清除人员的device_id字段
+                                                userMapper.updateUserDeviceId(userNumber, null);
+                                        }
+                                } catch (Exception e) {
+                                        logger.warn("Failed to update user status for {}: {}", userNumber, e.getMessage());
+                                        // 继续处理下一个人员，不因为单个人员处理失败而中止
                                 }
                         }
                         
@@ -282,12 +295,17 @@ public class deviceServiceImplement implements deviceService {
                                 if (personnels != null && !personnels.trim().isEmpty()) {
                                         List<String> personnelList = Arrays.asList(personnels.split(","));
                                         for (String personnel : personnelList) {
-                                                String userNumber = (userMapper.getUserInfoByName(personnel.trim())).getUserNumber();
-                                                if (userNumber != null) {
-                                                        // 解除人员与设备的配对关系
-                                                        userMapper.updateUserPairingStatus(userNumber, "unpaired", null);
-                                                        // 清除人员的device_id字段
-                                                        userMapper.updateUserDeviceId(userNumber, null);
+                                                String userNumber = personnel.trim();
+                                                try {
+                                                        if (userNumber != null && !userNumber.isEmpty()) {
+                                                                // 解除人员与设备的配对关系
+                                                                userMapper.updateUserPairingStatus(userNumber, "unpaired", null);
+                                                                // 清除人员的device_id字段
+                                                                userMapper.updateUserDeviceId(userNumber, null);
+                                                        }
+                                                } catch (Exception e) {
+                                                        logger.warn("Failed to update user status for {}: {}", userNumber, e.getMessage());
+                                                        // 继续处理下一个人员，不因为单个人员处理失败而中止
                                                 }
                                         }
                                 }

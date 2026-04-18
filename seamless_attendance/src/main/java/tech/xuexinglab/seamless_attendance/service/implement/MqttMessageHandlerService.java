@@ -171,8 +171,10 @@ public class MqttMessageHandlerService {
                         if (personnelNumbers.size() > 0) {
                                 String userNumber = personnelNumbers.get(0);
                                 int status = message.getP1();
+                                // 根据状态值获取考勤状态
+                                String attendanceStatus = (status == 1) ? "active" : "absent";
                                 // 判断人员状态, 只有状态更新时才进行后续处理, 避免重复更新和发送消息
-                                if (!hasStatusChanged(userNumber, String.valueOf(status))) {
+                                if (!hasStatusChanged(userNumber, attendanceStatus)) {
                                         logger.info("Status for user {} has not changed, skipping update", userNumber);
                                         return;
                                 }
@@ -190,8 +192,10 @@ public class MqttMessageHandlerService {
                         if (personnelNumbers.size() > 1) {
                                 String userNumber = personnelNumbers.get(1);
                                 int status = message.getP2();
+                                // 根据状态值获取考勤状态
+                                String attendanceStatus = (status == 1) ? "active" : "absent";
                                 // 判断人员状态, 只有状态更新时才进行后续处理, 避免重复更新和发送消息
-                                if (!hasStatusChanged(userNumber, String.valueOf(status))) {
+                                if (!hasStatusChanged(userNumber, attendanceStatus)) {
                                         logger.info("Status for user {} has not changed, skipping update", userNumber);
                                         return;
                                 }
@@ -207,8 +211,10 @@ public class MqttMessageHandlerService {
                         if (personnelNumbers.size() > 2) {
                                 String userNumber = personnelNumbers.get(2);
                                 int status = message.getP3();
+                                // 根据状态值获取考勤状态
+                                String attendanceStatus = (status == 1) ? "active" : "absent";
                                 // 判断人员状态, 只有状态更新时才进行后续处理, 避免重复更新和发送消息
-                                if (!hasStatusChanged(userNumber, String.valueOf(status))) {
+                                if (!hasStatusChanged(userNumber, attendanceStatus)) {
                                         logger.info("Status for user {} has not changed, skipping update", userNumber);
                                         return;
                                 }
@@ -369,8 +375,8 @@ public class MqttMessageHandlerService {
 
                                 if (status == 1) {
                                         // 当前在线
-                                        if ("absent".equals(previousStatus)) {
-                                                // 从离线变为在线
+                                        if ("absent".equals(previousStatus) || "leave".equals(previousStatus)) {
+                                                // 从离线或leave变为在线
                                                 currentStatus.setCurrentStatus("active");
                                                 currentStatus.setLastActiveTime(currentDateTime);
                                                 currentStatus.setUpdateTime(currentDateTime);
@@ -384,8 +390,17 @@ public class MqttMessageHandlerService {
                                                 // 更新用户状态
                                                 attendanceMapper.updateUserStatus(currentStatus);
                                                 result_status = "active";
+                                                // 更新user表中的status字段
+                                                userMapper.updateUserStatus(userNumber, "active");
+                                        } else if ("active".equals(previousStatus)) {
+                                                // 保持在线状态，更新最后活动时间
+                                                currentStatus.setLastActiveTime(currentDateTime);
+                                                currentStatus.setUpdateTime(currentDateTime);
+                                                attendanceMapper.updateUserStatus(currentStatus);
+                                                result_status = "active";
+                                                // 更新user表中的status字段
+                                                userMapper.updateUserStatus(userNumber, "active");
                                         }
-                                        // 保持在线状态，不做操作
                                 } else {
                                         // 当前离线
                                         if ("active".equals(previousStatus)) {
@@ -419,31 +434,21 @@ public class MqttMessageHandlerService {
                                                                 currentTimeStr,
                                                                 currentStatus.getTodayWorkHours(),
                                                                 "leave");
+                                        } else if ("absent".equals(previousStatus)) {
+                                                // 保持离线状态，更新最后缺席时间
+                                                currentStatus.setLastAbsentTime(currentDateTime);
+                                                currentStatus.setUpdateTime(currentDateTime);
+                                                attendanceMapper.updateUserStatus(currentStatus);
+                                                result_status = "absent";
+                                                // 更新user表中的status字段
+                                                userMapper.updateUserStatus(userNumber, "absent");
                                         }
-                                        // 保持离线状态，不做操作
+                                        // leave状态保持不变
                                 }
                         }
 
-                        // 更新user表中的status字段
-                        if (userInfo != null) {
-                                // userInfo.setStatus(status == 1 ? "active" : "absent");
-                                userInfo.setStatus(result_status);
-                                // 使用现有的updateUserInfo方法更新用户状态
-                                userMapper.updateUserInfo(
-                                                userInfo.getId(),
-                                                userInfo.getName(),
-                                                userInfo.getContactType(),
-                                                userInfo.getContactValue(),
-                                                userInfo.getUserNumber(),
-                                                userInfo.getRole(),
-                                                userInfo.getJobTitle(),
-                                                userInfo.getWorkContent(),
-                                                userInfo.getStudioId(),
-                                                userInfo.getAvatar(),
-                                                userInfo.getStatus(),
-                                                userInfo.getJoinDate(),
-                                                userInfo.getDeviceId());
-                        }
+                        // 状态已经在上面的分支中更新过，这里不需要重复更新
+                        // 更新user表中的status字段已经在各状态分支中完成
 
                         // // 发送WebSocket消息到前端
                         // sendStatusUpdateToFrontend(userNumber, result_status, currentDateTime);
